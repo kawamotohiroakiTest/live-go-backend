@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  front:
+    build:
+      context: ../front
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../front:/app
+      - /app/node_modules
+    networks:
+      - live-network
+
+  back:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    volumes:
+      - .:/app
+    networks:
+      - live-network
+
+networks:
+  live-network:
+    driver: bridge

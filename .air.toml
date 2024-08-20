@@ -1,0 +1,5 @@
+# .air.toml の例
+[build]
+cmd = "go build -o ./tmp/live ./main.go"
+bin = "tmp/live"
+full_bin = "./tmp/live"
