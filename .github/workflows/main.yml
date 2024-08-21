@@ -32,7 +32,7 @@ jobs:
 
       - name: Build, tag, and push image to ECR
         run: |
-          IMAGE_TAG=${{ github.sha }}
+          IMAGE_TAG=latest
           docker buildx build --platform linux/arm64 -f Dockerfile -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/live-go-backend:$IMAGE_TAG --push .
 
       - name: Download task definition //作ったタスク定義をDLする。githubに格納する必要がなくなる
@@ -45,7 +45,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: live-go-backend
-          image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/live-go-backend:${{ github.sha }}
+          image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/live-go-backend:latest
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
