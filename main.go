@@ -91,7 +91,7 @@ func main() {
     r.HandleFunc("/api/v1/todo/{id}", todoHandler)
 
     // CORS対応ミドルウェアを適用してサーバーを起動
-    fmt.Println("Starting server on :" + port)
+    fmt.Println("Starting server on! :" + port)
     if err := http.ListenAndServe(":"+port, enableCors(r)); err != nil {
         fmt.Println("Error starting server:", err)
     }
