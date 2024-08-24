@@ -19,7 +19,7 @@ type Todo struct {
 }
 
 var todos = []Todo{
-	{ID: 1, Title: "Sample Todo 1", Completed: false},
+	{ID: 1, Title: "タスク 1", Completed: false},
 	{ID: 2, Title: "2番目のタスク 2", Completed: true},
 	{ID: 3, Title: "Sample Todo 3", Completed: false},
 }
