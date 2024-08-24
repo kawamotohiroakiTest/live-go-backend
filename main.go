@@ -20,7 +20,7 @@ type Todo struct {
 
 var todos = []Todo{
 	{ID: 1, Title: "Sample Todo 1", Completed: false},
-	{ID: 2, Title: "Sample Todo 2", Completed: true},
+	{ID: 2, Title: "2番目のタスク 2", Completed: true},
 	{ID: 3, Title: "Sample Todo 3", Completed: false},
 }
 
@@ -61,15 +61,23 @@ func todoHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // ダミーデータを作成
-    response := map[string]interface{}{
-        "id":        id,
-        "title":     fmt.Sprintf("Sample Todo %d", id),
-        "completed": id%2 == 0, // 偶数のIDは完了済み、奇数のIDは未完了
+    // IDに対応するTodoを探す
+    var foundTodo *Todo
+    for _, todo := range todos {
+        if todo.ID == id {
+            foundTodo = &todo
+            break
+        }
+    }
+
+    if foundTodo == nil {
+        // 該当するIDが見つからなかった場合、エラーレスポンスを返す
+        http.Error(w, "Todo not found", http.StatusNotFound)
+        return
     }
 
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(response)
+    json.NewEncoder(w).Encode(foundTodo)
 }
 
 
