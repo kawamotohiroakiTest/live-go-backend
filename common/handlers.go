@@ -36,7 +36,7 @@ func TodoHandler(w http.ResponseWriter, r *http.Request) {
 	if foundTodo == nil {
 		errMsg := fmt.Errorf("Todo not found with ID %d", id)
 		http.Error(w, errMsg.Error(), http.StatusNotFound)
-		LogError(errMsg)  // エラーログを書き込む
+		LogTodo(WARN, fmt.Sprintf("Todo not found for user input ID %d", id))  // ユーザーの入力に関連するエラーをログに記録
 		return
 	}
 
