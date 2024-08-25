@@ -24,7 +24,7 @@ func main() {
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
 
-	fmt.Println("Starting server on! :" + port)
+	fmt.Println("Starting server on :" + port)
 	if err := http.ListenAndServe(":"+port, common.EnableCors(r)); err != nil {
 		fmt.Println("Error starting server:", err)
 	}
