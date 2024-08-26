@@ -21,13 +21,13 @@ func InitDB() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", user, password, host, port, database)
 
 	var err error
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 100; i++ {
 		DB, err = sql.Open("mysql", dsn)
 		if err == nil && DB.Ping() == nil {
 			fmt.Println("Successfully connected to MySQL")
 			return
 		}
 		fmt.Println("Failed to connect to MySQL. Retrying...")
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
