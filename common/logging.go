@@ -12,6 +12,14 @@ var (
 )
 
 func init() {
+	// logsディレクトリの存在を確認し、なければ作成
+	if _, err := os.Stat("logs"); os.IsNotExist(err) {
+		err := os.Mkdir("logs", 0755) 
+		if err != nil {
+			logrus.Fatalf("Failed to create logs directory: %v", err)
+		}
+	}
+
 	// error.log ロガーの初期化
 	errorLogger = logrus.New()
 	errorLogger.SetFormatter(&logrus.JSONFormatter{})
