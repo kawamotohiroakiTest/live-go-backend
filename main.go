@@ -20,6 +20,8 @@ func main() {
 		port = "8080"
 	}
 
+	common.InitDB()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
