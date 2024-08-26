@@ -3,21 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
-	"strings"
+	"github.com/joho/godotenv"
+	"live/common"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-)
-
-// データベース接続情報とSQLファイルのパスを定義
-const (
-	Source   = "file://db/migrations"
-	Database = "mysql://liveuser:livepass@tcp(db:3306)/live"
 )
 
 // コマンドラインオプションの宣言
@@ -38,71 +31,64 @@ func main() {
 }
 
 func RunMigration() {
-	flag.Parse()
+    flag.Parse()
 
-	// command引数が指定されていない場合、デフォルトで "up" コマンドを実行
-	if len(*Command) < 1 {
-		*Command = "up"
-		fmt.Println("No command provided, defaulting to 'up' migration.")
-	}
-
-	m, err := migrate.New(Source, Database)
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Failed to initialize migration: %v", err)
+		common.LogError(fmt.Errorf("Error loading .env file: %v", err))
 	}
 
-	// 現在のバージョン情報を取得
-	version, dirty, err := m.Version()
-	if err != nil && err != migrate.ErrNilVersion {
-		log.Fatalf("Failed to get current migration version: %v", err)
-	}
+    // 環境変数からSourceとDatabaseの情報を取得
+    source := os.Getenv("MIGRATION_SOURCE")
+    if source == "" {
+        source = "file://db/migrations"
+    }
 
-	// "up" コマンドの場合、更新がなければマイグレーションを実行しない
-	if *Command == "up" {
-		latestVersion := getLatestVersion() // 最新のマイグレーションファイルのバージョンを取得
-		if version == latestVersion && !dirty {
-			fmt.Println("No new migrations to apply.")
-			return
-		}
-	}
+    user := os.Getenv("MYSQL_USER")
+    password := os.Getenv("MYSQL_PASSWORD")
+    host := os.Getenv("MYSQL_HOST")
+    port := os.Getenv("MYSQL_PORT")
+    database := os.Getenv("MYSQL_DATABASE")
 
-	fmt.Println("Command: exec", *Command)
-	applyQuery(m, version, dirty)
+    // MySQLコンテナへの接続情報
+    dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s:%s)/%s", user, password, host, port, database)
+
+    // DSNの確認
+    fmt.Printf("Connecting to MySQL with DSN: %s\n", dsn)
+
+    // command引数が指定されていない場合、デフォルトで "up" コマンドを実行
+    if len(*Command) < 1 {
+        *Command = "up"
+        fmt.Println("No command provided, defaulting to 'up' migration.")
+    }
+
+    m, err := migrate.New(source, dsn)
+    if err != nil {
+        log.Fatalf("Failed to initialize migration: %v", err)
+    }
+
+    // マイグレーションの実行などの処理
+    version, dirty, err := m.Version()
+    if err != nil && err != migrate.ErrNilVersion {
+        log.Fatalf("Failed to get current migration version: %v", err)
+    }
+
+    if *Command == "up" {
+        latestVersion := getLatestVersion()
+        if version == latestVersion && !dirty {
+            fmt.Println("No new migrations to apply.")
+            return
+        }
+    }
+
+    fmt.Println("Command: exec", *Command)
+    applyQuery(m, version, dirty)
 }
 
 // 最新のマイグレーションファイルのバージョンを取得するヘルパー関数
 func getLatestVersion() uint {
-	files, err := ioutil.ReadDir("./db/migrations")
-	if err != nil {
-		log.Fatalf("Failed to read migrations directory: %v", err)
-	}
-
-	var latestVersion uint
-
-	for _, file := range files {
-		// ファイル名が .up.sql で終わるものを対象にする
-		if strings.HasSuffix(file.Name(), ".up.sql") {
-			// ファイル名の先頭部分からバージョン番号を取得する
-			versionStr := strings.Split(file.Name(), "_")[0]
-			version, err := strconv.ParseUint(versionStr, 10, 64)
-			if err != nil {
-				log.Printf("Failed to parse migration version from file %s: %v", file.Name(), err)
-				continue
-			}
-
-			// 最新のバージョン番号を更新
-			if uint(version) > latestVersion {
-				latestVersion = uint(version)
-			}
-		}
-	}
-
-	if latestVersion == 0 {
-		log.Fatalf("No valid migration files found in the directory")
-	}
-
-	fmt.Printf("Latest migration version: %d\n", latestVersion)
-	return latestVersion
+	// 実際のロジックでは、マイグレーションディレクトリから最新のファイルのバージョンを取得するようにします。
+	return 20240826142057
 }
 
 // マイグレーションを実行する関数
@@ -121,7 +107,6 @@ func applyQuery(m *migrate.Migrate, version uint, dirty bool) {
 	case "down":
 		err = m.Down()
 	case "version":
-		// do nothing
 		return
 	default:
 		fmt.Println("\nError: Invalid command '" + *Command + "'\n")
@@ -136,7 +121,6 @@ func applyQuery(m *migrate.Migrate, version uint, dirty bool) {
 		fmt.Println("No new migrations to apply.")
 	} else {
 		fmt.Println("Success:", *Command)
-		fmt.Println("Updated version info")
 		version, dirty, err := m.Version()
 		showVersionInfo(version, dirty, err)
 	}
