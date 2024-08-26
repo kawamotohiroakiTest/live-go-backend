@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 	"github.com/sirupsen/logrus"
+	"io"
 )
 
 var (
@@ -23,20 +24,26 @@ func init() {
 	// error.log ロガーの初期化
 	errorLogger = logrus.New()
 	errorLogger.SetFormatter(&logrus.JSONFormatter{})
-	file, err := os.OpenFile("logs/error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	errorLogFile, err := os.OpenFile("logs/error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open error log file: %v", err)
 	}
-	errorLogger.SetOutput(file)
+
+	// stdout と error.log に同時にログを出力するためにマルチライターを設定
+	errorMultiWriter := io.MultiWriter(os.Stderr, errorLogFile)
+	errorLogger.SetOutput(errorMultiWriter)
 
 	// todo.log ロガーの初期化
 	todoLogger = logrus.New()
 	todoLogger.SetFormatter(&logrus.JSONFormatter{})
-	file, err = os.OpenFile("logs/todo.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	todoLogFile, err := os.OpenFile("logs/todo.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open todo log file: %v", err)
 	}
-	todoLogger.SetOutput(file)
+
+	// stdout と todo.log に同時にログを出力するためにマルチライターを設定
+	todoMultiWriter := io.MultiWriter(os.Stdout, todoLogFile)
+	todoLogger.SetOutput(todoMultiWriter)
 }
 
 func LogError(err error) {

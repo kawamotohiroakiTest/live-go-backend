@@ -12,7 +12,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("Error loading .env file")
+		common.LogError(fmt.Errorf("Error loading .env file: %v", err))
 	}
 
 	port := os.Getenv("PORT")
@@ -24,8 +24,8 @@ func main() {
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
 
-	fmt.Println("Starting server on log :" + port)
+	common.LogTodo(common.INFO, "Starting server on port: "+port)
 	if err := http.ListenAndServe(":"+port, common.EnableCors(r)); err != nil {
-		fmt.Println("Error starting server:", err)
+		common.LogError(fmt.Errorf("Error starting server: %v", err))
 	}
 }
