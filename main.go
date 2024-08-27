@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"live/common"
+	"live/db"
 	"net/http"
 	"os"
-	"github.com/joho/godotenv"
+
 	"github.com/gorilla/mux"
-	"live/common"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -19,6 +21,10 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	common.InitDB()
+
+	db.RunMigration()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/health", common.HealthHandler)

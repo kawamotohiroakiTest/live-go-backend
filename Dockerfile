@@ -13,6 +13,9 @@ RUN go mod download
 
 COPY . .
 
-CMD ["air"]
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8080
+
+ENTRYPOINT ["/app/entrypoint.sh"]
