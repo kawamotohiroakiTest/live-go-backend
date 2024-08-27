@@ -1,12 +1,13 @@
-package main
+package db
 
 import (
 	"flag"
 	"fmt"
+	"live/common"
 	"log"
 	"os"
+
 	"github.com/joho/godotenv"
-	"live/common"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
@@ -26,63 +27,59 @@ var AvailableExecCommands = map[string]string{
 	"version": "Check current migration version",
 }
 
-func main() {
-	RunMigration()
-}
-
 func RunMigration() {
-    flag.Parse()
+	flag.Parse()
 
 	err := godotenv.Load()
 	if err != nil {
 		common.LogError(fmt.Errorf("Error loading .env file: %v", err))
 	}
 
-    // 環境変数からSourceとDatabaseの情報を取得
-    source := os.Getenv("MIGRATION_SOURCE")
-    if source == "" {
-        source = "file://db/migrations"
-    }
+	// 環境変数からSourceとDatabaseの情報を取得
+	source := os.Getenv("MIGRATION_SOURCE")
+	if source == "" {
+		source = "file://db/migrations"
+	}
 
-    user := os.Getenv("MYSQL_USER")
-    password := os.Getenv("MYSQL_PASSWORD")
-    host := os.Getenv("MYSQL_HOST")
-    port := os.Getenv("MYSQL_PORT")
-    database := os.Getenv("MYSQL_DATABASE")
+	user := os.Getenv("MYSQL_USER")
+	password := os.Getenv("MYSQL_PASSWORD")
+	host := os.Getenv("MYSQL_HOST")
+	port := os.Getenv("MYSQL_PORT")
+	database := os.Getenv("MYSQL_DATABASE")
 
-    // MySQLコンテナへの接続情報
-    dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s:%s)/%s", user, password, host, port, database)
+	// MySQLコンテナへの接続情報
+	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s:%s)/%s", user, password, host, port, database)
 
-    // DSNの確認
-    fmt.Printf("Connecting to MySQL with DSN: %s\n", dsn)
+	// DSNの確認
+	fmt.Printf("Connecting to MySQL with DSN: %s\n", dsn)
 
-    // command引数が指定されていない場合、デフォルトで "up" コマンドを実行
-    if len(*Command) < 1 {
-        *Command = "up"
-        fmt.Println("No command provided, defaulting to 'up' migration.")
-    }
+	// command引数が指定されていない場合、デフォルトで "up" コマンドを実行
+	if len(*Command) < 1 {
+		*Command = "up"
+		fmt.Println("No command provided, defaulting to 'up' migration.")
+	}
 
-    m, err := migrate.New(source, dsn)
-    if err != nil {
-        log.Fatalf("Failed to initialize migration: %v", err)
-    }
+	m, err := migrate.New(source, dsn)
+	if err != nil {
+		log.Fatalf("Failed to initialize migration: %v", err)
+	}
 
-    // マイグレーションの実行などの処理
-    version, dirty, err := m.Version()
-    if err != nil && err != migrate.ErrNilVersion {
-        log.Fatalf("Failed to get current migration version: %v", err)
-    }
+	// マイグレーションの実行などの処理
+	version, dirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		log.Fatalf("Failed to get current migration version: %v", err)
+	}
 
-    if *Command == "up" {
-        latestVersion := getLatestVersion()
-        if version == latestVersion && !dirty {
-            fmt.Println("No new migrations to apply.")
-            return
-        }
-    }
+	if *Command == "up" {
+		latestVersion := getLatestVersion()
+		if version == latestVersion && !dirty {
+			fmt.Println("No new migrations to apply.")
+			return
+		}
+	}
 
-    fmt.Println("Command: exec", *Command)
-    applyQuery(m, version, dirty)
+	fmt.Println("Command: exec", *Command)
+	applyQuery(m, version, dirty)
 }
 
 // 最新のマイグレーションファイルのバージョンを取得するヘルパー関数
