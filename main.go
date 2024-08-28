@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"live/auth"
 	"live/common"
+	"live/db"
 	"net/http"
 	"os"
 
@@ -24,7 +25,7 @@ func main() {
 
 	common.InitDB()
 
-	// db.RunMigration()
+	db.RunMigration()
 
 	r := mux.NewRouter()
 
