@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"live/auth"
 	"live/common"
-	"live/db"
 	"net/http"
 	"os"
 
@@ -24,9 +24,12 @@ func main() {
 
 	common.InitDB()
 
-	db.RunMigration()
+	// db.RunMigration()
 
 	r := mux.NewRouter()
+
+	auth.RegisterRoutes(r)
+
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
 
