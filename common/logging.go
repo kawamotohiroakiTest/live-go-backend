@@ -1,21 +1,23 @@
 package common
 
 import (
+	"io"
 	"os"
 	"time"
+
 	"github.com/sirupsen/logrus"
-	"io"
 )
 
 var (
 	errorLogger *logrus.Logger
 	todoLogger  *logrus.Logger
+	userLogger  *logrus.Logger
 )
 
 func init() {
 	// logsディレクトリの存在を確認し、なければ作成
 	if _, err := os.Stat("logs"); os.IsNotExist(err) {
-		err := os.Mkdir("logs", 0755) 
+		err := os.Mkdir("logs", 0755)
 		if err != nil {
 			logrus.Fatalf("Failed to create logs directory: %v", err)
 		}
@@ -44,6 +46,15 @@ func init() {
 	// stdout と todo.log に同時にログを出力するためにマルチライターを設定
 	todoMultiWriter := io.MultiWriter(os.Stdout, todoLogFile)
 	todoLogger.SetOutput(todoMultiWriter)
+
+	userLogger = logrus.New()
+	userLogger.SetFormatter(&logrus.JSONFormatter{})
+	userLogFile, err := os.OpenFile("logs/user.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		logrus.Fatalf("Failed to open user log file: %v", err)
+	}
+	userMultiWriter := io.MultiWriter(os.Stdout, userLogFile)
+	userLogger.SetOutput(userMultiWriter)
 }
 
 func LogError(err error) {
@@ -64,6 +75,14 @@ const (
 
 func LogTodo(level LogLevel, message string) {
 	todoLogger.WithFields(logrus.Fields{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"level":     level,
+		"message":   message,
+	}).Info()
+}
+
+func LogUser(level LogLevel, message string) {
+	userLogger.WithFields(logrus.Fields{
 		"timestamp": time.Now().Format(time.RFC3339),
 		"level":     level,
 		"message":   message,
