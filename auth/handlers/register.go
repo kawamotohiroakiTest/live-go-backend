@@ -5,8 +5,10 @@ import (
 	"live/auth/models"
 	"live/common"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -15,6 +17,8 @@ type Credentials struct {
 	Mail     string `json:"mail" validate:"required,email"`
 	Password string `json:"pass" validate:"required,min=8"`
 }
+
+// `jwtKey` と `Claims` は既に定義されていると仮定し、それを再利用
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
@@ -69,7 +73,29 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// JWTトークンの作成
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		UserID: user.ID,
+		Mail:   user.Mail,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		common.LogUser(common.ERROR, "Failed to generate JWT: "+err.Error())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// JWTトークンをレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "User registered successfully",
+		"token":   tokenString, // JWTトークンを返す
+	})
 }
