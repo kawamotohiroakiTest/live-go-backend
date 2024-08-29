@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"live/auth/models"
 	"live/common"
 	"net/http"
@@ -60,7 +61,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// JWTトークンの作成
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(7 * 24 * time.Hour)
 	claims := &Claims{
 		UserID: user.ID,
 		Mail:   user.Mail,
@@ -77,8 +78,19 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// トークンとそのクレーム情報をログに記録
+	common.LogUser(common.INFO, "Generated JWT token: "+tokenString)
+	common.LogUser(common.INFO, "Token claims: UserID: "+fmt.Sprintf("%d", claims.UserID)+", Mail: "+claims.Mail+", ExpiresAt: "+fmt.Sprintf("%d", claims.ExpiresAt))
+
+	// ログイン成功のログを記録
+	common.LogUser(common.INFO, "User logged in successfully: "+user.Mail)
+
 	// トークンをレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	jsonResponse := map[string]string{"token": tokenString}
+	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
+		common.LogUser(common.ERROR, "Failed to send JWT token response: "+err.Error())
+	}
+	common.LogUser(common.INFO, "JWT response sent: "+fmt.Sprintf("%v", jsonResponse))
 }
