@@ -1,12 +1,15 @@
 package videoupload
 
 import (
+	"live/common"
 	"live/videoupload/handlers"
 
 	"github.com/gorilla/mux"
 )
 
 func RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/api/v1/videoupload/upload", handlers.Upload).Methods("POST")
-	// router.HandleFunc("/api/v1/videoupload/status/{id}", handlers.Status).Methods("GET")
+	videouploadRouter := router.PathPrefix("/api/v1/videoupload").Subrouter()
+	videouploadRouter.Use(common.AuthMiddleware)
+
+	videouploadRouter.HandleFunc("/upload", handlers.Upload).Methods("POST")
 }

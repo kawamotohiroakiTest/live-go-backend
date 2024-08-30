@@ -3,8 +3,10 @@ package handlers
 import (
 	"io"
 	"live/common"
+	"live/videoupload/models"
 	"live/videoupload/services"
 	"net/http"
+	"strconv"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +55,38 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		common.LogVideoUploadError(err)
 		http.Error(w, "サムネイルファイルのアップロードに失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// ユーザーIDの取得
+	userID, err := common.GetUserIDFromContext(r.Context())
+	if err != nil {
+		common.LogVideoUploadError(err)
+		http.Error(w, "ユーザー情報の取得に失敗しました", http.StatusUnauthorized)
+		return
+	}
+
+	// 動画情報の保存
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	video, err := models.SaveVideo(userID, title, description)
+	if err != nil {
+		common.LogVideoUploadError(err)
+		http.Error(w, "動画情報の保存に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// 動画ファイル情報の保存
+	durationStr := r.FormValue("duration")
+	duration, _ := strconv.Atoi(durationStr)
+	fileSize := uint64(fileHeader.Size)
+	format := fileHeader.Header.Get("Content-Type")
+
+	_, err = models.SaveVideoFile(video.ID, fileURL, thumbnailURL, uint(duration), fileSize, format)
+	if err != nil {
+		common.LogVideoUploadError(err)
+		http.Error(w, "動画ファイル情報の保存に失敗しました", http.StatusInternalServerError)
 		return
 	}
 

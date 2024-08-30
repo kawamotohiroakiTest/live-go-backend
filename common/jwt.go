@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -11,14 +12,12 @@ import (
 // JWT秘密鍵の定義
 var JwtKey = []byte("your_secret_key")
 
-// JWTクレームの構造体
 type Claims struct {
 	UserID uint   `json:"user_id"`
 	Mail   string `json:"mail"`
 	jwt.StandardClaims
 }
 
-// jWT認証をチェックする
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -54,11 +53,19 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// jwtからuser_idを取得する
 func GetUserIDFromContext(ctx context.Context) (uint, error) {
+	// claims 変数の内容をログに出力
 	claims, ok := ctx.Value("claims").(*Claims)
+	LogVideoUploadError(fmt.Errorf("claims: %v, ok: %v", claims, ok))
+
 	if !ok || claims == nil {
-		return 0, jwt.ErrSignatureInvalid
+		err := fmt.Errorf("Failed to get claims from context")
+		LogVideoUploadError(err)
+		return 0, err
 	}
+
+	// 最終的に返す UserID をログに出力
+	LogVideoUploadError(fmt.Errorf("UserID: %d", claims.UserID))
+
 	return claims.UserID, nil
 }
