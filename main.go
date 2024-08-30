@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"live/auth"
 	"live/common"
@@ -14,6 +15,9 @@ import (
 )
 
 func main() {
+	// フラグのパース
+	flag.Parse()
+
 	err := godotenv.Load()
 	if err != nil {
 		common.LogError(fmt.Errorf("Error loading .env file: %v", err))
@@ -26,7 +30,11 @@ func main() {
 
 	common.InitDB()
 
-	db.RunMigration()
+	// コマンドラインフラグのチェック
+	if len(flag.Args()) > 0 && flag.Args()[0] == "migrate" {
+		db.RunMigration()
+		return
+	}
 
 	r := mux.NewRouter()
 
