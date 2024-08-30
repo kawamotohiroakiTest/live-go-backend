@@ -53,8 +53,10 @@ func NewStorageService() (*StorageService, error) {
 	}, nil
 }
 
+// 動画ファイルをアップロードするメソッド
 func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
-	objectName := fileHeader.Filename
+	// ファイル名を `movies/` プレフィックスにする
+	objectName := "movies/" + fileHeader.Filename
 
 	ext := filepath.Ext(objectName)
 	validExtensions := map[string]bool{
@@ -73,7 +75,7 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 
 	if !validExtensions[ext] {
 		err := fmt.Errorf("無効なファイル拡張子: %s", ext)
-		common.LogVideoUploadError(err) // ここでログを記録
+		common.LogVideoUploadError(err)
 		return "", err
 	}
 
@@ -85,6 +87,45 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 	})
 	if err != nil {
 		common.LogVideoUploadError(fmt.Errorf("ファイルのアップロードに失敗しました: %w", err))
+		return "", err
+	}
+
+	fileURL := fmt.Sprintf("%s/%s/%s", os.Getenv("STORAGE_ENDPOINT"), s.Bucket, objectName)
+	return fileURL, nil
+}
+
+// サムネイルをアップロードするメソッド
+func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
+	// ファイル名を `thumbnails/` プレフィックスにする
+	objectName := "thumbnails/" + fileHeader.Filename
+
+	ext := filepath.Ext(objectName)
+	validExtensions := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+		".bmp":  true,
+		".tiff": true,
+		".webp": true,
+		".ico":  true,
+		".svg":  true,
+	}
+
+	if !validExtensions[ext] {
+		err := fmt.Errorf("無効なファイル拡張子: %s", ext)
+		common.LogVideoUploadError(err)
+		return "", err
+	}
+
+	contentType := fileHeader.Header.Get("Content-Type")
+
+	// ファイルをMinIOにアップロード
+	_, err := s.Client.PutObject(context.Background(), s.Bucket, objectName, file, fileHeader.Size, minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		common.LogVideoUploadError(fmt.Errorf("サムネイルのアップロードに失敗しました: %w", err))
 		return "", err
 	}
 
