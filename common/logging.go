@@ -1,7 +1,6 @@
 package common
 
 import (
-	"io"
 	"os"
 	"time"
 
@@ -9,9 +8,10 @@ import (
 )
 
 var (
-	errorLogger *logrus.Logger
-	todoLogger  *logrus.Logger
-	userLogger  *logrus.Logger
+	errorLogger       *logrus.Logger
+	todoLogger        *logrus.Logger
+	userLogger        *logrus.Logger
+	videouploadLogger *logrus.Logger
 )
 
 func init() {
@@ -30,10 +30,7 @@ func init() {
 	if err != nil {
 		logrus.Fatalf("Failed to open error log file: %v", err)
 	}
-
-	// stdout と error.log に同時にログを出力するためにマルチライターを設定
-	errorMultiWriter := io.MultiWriter(os.Stderr, errorLogFile)
-	errorLogger.SetOutput(errorMultiWriter)
+	errorLogger.SetOutput(errorLogFile)
 
 	// todo.log ロガーの初期化
 	todoLogger = logrus.New()
@@ -42,19 +39,25 @@ func init() {
 	if err != nil {
 		logrus.Fatalf("Failed to open todo log file: %v", err)
 	}
+	todoLogger.SetOutput(todoLogFile)
 
-	// stdout と todo.log に同時にログを出力するためにマルチライターを設定
-	todoMultiWriter := io.MultiWriter(os.Stdout, todoLogFile)
-	todoLogger.SetOutput(todoMultiWriter)
-
+	// user.log ロガーの初期化
 	userLogger = logrus.New()
 	userLogger.SetFormatter(&logrus.JSONFormatter{})
 	userLogFile, err := os.OpenFile("logs/user.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open user log file: %v", err)
 	}
-	userMultiWriter := io.MultiWriter(os.Stdout, userLogFile)
-	userLogger.SetOutput(userMultiWriter)
+	userLogger.SetOutput(userLogFile)
+
+	// videoupload.log ロガーの初期化
+	videouploadLogger = logrus.New()
+	videouploadLogger.SetFormatter(&logrus.JSONFormatter{})
+	videouploadLogFile, err := os.OpenFile("logs/videoupload.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		logrus.Fatalf("Failed to open videoupload log file: %v", err)
+	}
+	videouploadLogger.SetOutput(videouploadLogFile)
 }
 
 func LogError(err error) {
@@ -87,4 +90,12 @@ func LogUser(level LogLevel, message string) {
 		"level":     level,
 		"message":   message,
 	}).Info()
+}
+
+func LogVideoUploadError(err error) {
+	videouploadLogger.WithFields(logrus.Fields{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"level":     "ERROR",
+		"message":   err.Error(),
+	}).Error()
 }

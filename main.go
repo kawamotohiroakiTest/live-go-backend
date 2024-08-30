@@ -5,6 +5,7 @@ import (
 	"live/auth"
 	"live/common"
 	"live/db"
+	"live/videoupload"
 	"net/http"
 	"os"
 
@@ -30,6 +31,7 @@ func main() {
 	r := mux.NewRouter()
 
 	auth.RegisterRoutes(r)
+	videoupload.RegisterRoutes(r)
 
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
