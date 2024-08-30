@@ -17,26 +17,57 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ユーザーIDの取得
+	userID, err := common.GetUserIDFromContext(r.Context())
+	if err != nil {
+		common.LogVideoUploadError(err)
+		http.Error(w, "ユーザー情報の取得に失敗しました", http.StatusUnauthorized)
+		return
+	}
+
+	// DBトランザクションの開始
+	tx := common.DB.Begin()
+	if tx.Error != nil {
+		common.LogVideoUploadError(tx.Error)
+		http.Error(w, "内部サーバーエラー", http.StatusInternalServerError)
+		return
+	}
+
+	// 動画情報の保存
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	video, err := models.SaveVideoWithTransaction(tx, userID, title, description)
+	if err != nil {
+		common.LogVideoUploadError(err)
+		tx.Rollback()
+		http.Error(w, "動画情報の保存に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	storageService, err := services.NewStorageService()
+	if err != nil {
+		common.LogVideoUploadError(err)
+		tx.Rollback()
+		http.Error(w, "ストレージサービスの初期化に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
 	// 動画ファイルの処理
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		common.LogVideoUploadError(err)
+		tx.Rollback()
 		http.Error(w, "動画ファイルの取得に失敗しました", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
-	storageService, err := services.NewStorageService()
-	if err != nil {
-		common.LogVideoUploadError(err)
-		http.Error(w, "ストレージサービスの初期化に失敗しました", http.StatusInternalServerError)
-		return
-	}
-
 	// サムネイルファイルの処理
 	thumbnail, thumbnailHeader, err := r.FormFile("thumbnail")
 	if err != nil {
 		common.LogVideoUploadError(err)
+		tx.Rollback()
 		http.Error(w, "サムネイルファイルの取得に失敗しました", http.StatusBadRequest)
 		return
 	}
@@ -46,6 +77,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	fileURL, err := storageService.UploadFile(file, fileHeader)
 	if err != nil {
 		common.LogVideoUploadError(err)
+		tx.Rollback()
 		http.Error(w, "動画ファイルのアップロードに失敗しました", http.StatusInternalServerError)
 		return
 	}
@@ -54,26 +86,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	thumbnailURL, err := storageService.UploadThumbnailFile(thumbnail, thumbnailHeader)
 	if err != nil {
 		common.LogVideoUploadError(err)
+		tx.Rollback()
 		http.Error(w, "サムネイルファイルのアップロードに失敗しました", http.StatusInternalServerError)
-		return
-	}
-
-	// ユーザーIDの取得
-	userID, err := common.GetUserIDFromContext(r.Context())
-	if err != nil {
-		common.LogVideoUploadError(err)
-		http.Error(w, "ユーザー情報の取得に失敗しました", http.StatusUnauthorized)
-		return
-	}
-
-	// 動画情報の保存
-	title := r.FormValue("title")
-	description := r.FormValue("description")
-
-	video, err := models.SaveVideo(userID, title, description)
-	if err != nil {
-		common.LogVideoUploadError(err)
-		http.Error(w, "動画情報の保存に失敗しました", http.StatusInternalServerError)
 		return
 	}
 
@@ -83,10 +97,18 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	fileSize := uint64(fileHeader.Size)
 	format := fileHeader.Header.Get("Content-Type")
 
-	_, err = models.SaveVideoFile(video.ID, fileURL, thumbnailURL, uint(duration), fileSize, format)
+	_, err = models.SaveVideoFileWithTransaction(tx, video.ID, fileURL, thumbnailURL, uint(duration), fileSize, format)
 	if err != nil {
 		common.LogVideoUploadError(err)
+		tx.Rollback()
 		http.Error(w, "動画ファイル情報の保存に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// トランザクションのコミット
+	if err := tx.Commit().Error; err != nil {
+		common.LogVideoUploadError(err)
+		http.Error(w, "内部サーバーエラー", http.StatusInternalServerError)
 		return
 	}
 
