@@ -56,7 +56,7 @@ func NewStorageService() (*StorageService, error) {
 // 動画ファイルをアップロードするメソッド
 func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
 	// ファイル名を `movies/` プレフィックスにする
-	objectName := "movies/" + fileHeader.Filename
+	objectName := "movies/" + common.GenerateUniqueFileName(fileHeader.Filename)
 
 	ext := filepath.Ext(objectName)
 	validExtensions := map[string]bool{
@@ -97,7 +97,7 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 // サムネイルをアップロードするメソッド
 func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
 	// ファイル名を `thumbnails/` プレフィックスにする
-	objectName := "thumbnails/" + fileHeader.Filename
+	objectName := "thumbnails/" + common.GenerateUniqueFileName(fileHeader.Filename)
 
 	ext := filepath.Ext(objectName)
 	validExtensions := map[string]bool{
