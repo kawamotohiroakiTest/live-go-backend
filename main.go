@@ -36,6 +36,10 @@ func main() {
 		return
 	}
 
+	// マイグレーションの実行
+	common.LogTodo(common.INFO, "Running database migrations...")
+	db.RunMigration()
+
 	r := mux.NewRouter()
 
 	auth.RegisterRoutes(r)
