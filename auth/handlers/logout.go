@@ -8,7 +8,7 @@ import (
 )
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	// Set the JWT token to expire immediately
+	// Set the JWT token in the cookie to expire immediately
 	expirationTime := time.Now().Add(-time.Hour)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
@@ -16,6 +16,13 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		Expires:  expirationTime,
 		HttpOnly: true,
 	})
+
+	// If the token is passed in the Authorization header, instruct the client to remove it
+	authorizationHeader := r.Header.Get("Authorization")
+	if authorizationHeader != "" {
+		// Respond with a header to indicate the token should be removed
+		w.Header().Set("Authorization", "")
+	}
 
 	// Log the logout action
 	common.LogUser(common.INFO, "User logged out successfully")
