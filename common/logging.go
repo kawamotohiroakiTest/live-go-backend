@@ -1,6 +1,7 @@
 package common
 
 import (
+	"io"
 	"os"
 	"time"
 
@@ -23,6 +24,9 @@ func init() {
 		}
 	}
 
+	// 共通の標準出力設定
+	stdOut := os.Stdout
+
 	// error.log ロガーの初期化
 	errorLogger = logrus.New()
 	errorLogger.SetFormatter(&logrus.JSONFormatter{})
@@ -30,7 +34,8 @@ func init() {
 	if err != nil {
 		logrus.Fatalf("Failed to open error log file: %v", err)
 	}
-	errorLogger.SetOutput(errorLogFile)
+	// 標準出力とファイルの両方に書き込み
+	errorLogger.SetOutput(io.MultiWriter(stdOut, errorLogFile))
 
 	// todo.log ロガーの初期化
 	todoLogger = logrus.New()
@@ -39,7 +44,8 @@ func init() {
 	if err != nil {
 		logrus.Fatalf("Failed to open todo log file: %v", err)
 	}
-	todoLogger.SetOutput(todoLogFile)
+	// 標準出力とファイルの両方に書き込み
+	todoLogger.SetOutput(io.MultiWriter(stdOut, todoLogFile))
 
 	// user.log ロガーの初期化
 	userLogger = logrus.New()
@@ -48,7 +54,8 @@ func init() {
 	if err != nil {
 		logrus.Fatalf("Failed to open user log file: %v", err)
 	}
-	userLogger.SetOutput(userLogFile)
+	// 標準出力とファイルの両方に書き込み
+	userLogger.SetOutput(io.MultiWriter(stdOut, userLogFile))
 
 	// videoupload.log ロガーの初期化
 	videouploadLogger = logrus.New()
@@ -57,7 +64,8 @@ func init() {
 	if err != nil {
 		logrus.Fatalf("Failed to open videoupload log file: %v", err)
 	}
-	videouploadLogger.SetOutput(videouploadLogFile)
+	// 標準出力とファイルの両方に書き込み
+	videouploadLogger.SetOutput(io.MultiWriter(stdOut, videouploadLogFile))
 }
 
 func LogError(err error) {

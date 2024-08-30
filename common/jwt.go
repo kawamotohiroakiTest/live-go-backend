@@ -56,7 +56,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 func GetUserIDFromContext(ctx context.Context) (uint, error) {
 	// claims 変数の内容をログに出力
 	claims, ok := ctx.Value("claims").(*Claims)
-	LogVideoUploadError(fmt.Errorf("claims: %v, ok: %v", claims, ok))
+	// LogVideoUploadError(fmt.Errorf("claims: %v, ok: %v", claims, ok))
 
 	if !ok || claims == nil {
 		err := fmt.Errorf("Failed to get claims from context")
@@ -65,7 +65,7 @@ func GetUserIDFromContext(ctx context.Context) (uint, error) {
 	}
 
 	// 最終的に返す UserID をログに出力
-	LogVideoUploadError(fmt.Errorf("UserID: %d", claims.UserID))
+	// LogVideoUploadError(fmt.Errorf("UserID: %d", claims.UserID))
 
 	return claims.UserID, nil
 }
