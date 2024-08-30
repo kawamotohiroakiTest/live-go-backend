@@ -23,10 +23,21 @@ func NewStorageService() (*StorageService, error) {
 	secretAccessKey := os.Getenv("STORAGE_SECRET_KEY")
 	useSSL := false
 
+	var creds *credentials.Credentials
+	if accessKeyID != "" && secretAccessKey != "" {
+		// ローカル環境や手動で設定したキーを使用する場合
+		creds = credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
+		useSSL = os.Getenv("STORAGE_USE_SSL") == "true"
+	} else {
+		// AWS環境でIAMロールを使用する場合
+		creds = credentials.NewIAM("")
+	}
+
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Creds:  creds,
 		Secure: useSSL,
 	})
+
 	if err != nil {
 		common.LogVideoUploadError(fmt.Errorf("MinIOクライアントの初期化に失敗しました: %w", err))
 		return nil, err
