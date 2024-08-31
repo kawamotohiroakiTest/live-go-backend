@@ -23,6 +23,8 @@ func NewStorageService() (*StorageService, error) {
 	secretAccessKey := os.Getenv("STORAGE_SECRET_KEY")
 	useSSL := false
 
+	common.LogVideoUploadError(fmt.Errorf("StorageService Initialization: Endpoint=%s, AccessKeyID=%s, UseSSL=%v", endpoint, accessKeyID, useSSL))
+
 	var creds *credentials.Credentials
 	if accessKeyID != "" && secretAccessKey != "" {
 		// ローカル環境や手動で設定したキーを使用する場合
@@ -39,11 +41,12 @@ func NewStorageService() (*StorageService, error) {
 	})
 
 	if err != nil {
-		common.LogVideoUploadError(fmt.Errorf("MinIOクライアントの初期化に失敗しました: %w", err))
+		common.LogVideoUploadError(fmt.Errorf("MinIOクライアントの初期化に失敗しました: Endpoint=%s, Error=%w", endpoint, err))
 		return nil, err
 	}
 
 	bucketName := os.Getenv("STORAGE_BUCKET")
+	common.LogVideoUploadError(fmt.Errorf("Using Bucket=%s", bucketName))
 
 	exists, err := client.BucketExists(context.Background(), bucketName)
 	if err != nil {
