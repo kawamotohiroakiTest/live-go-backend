@@ -1,65 +1,41 @@
 package services
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 	"live/common"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type StorageService struct {
-	Client *minio.Client
+	Client *s3.S3
 	Bucket string
 }
 
 func NewStorageService() (*StorageService, error) {
-	endpoint := os.Getenv("STORAGE_ENDPOINT")
-	accessKeyID := os.Getenv("STORAGE_ACCESS_KEY")
-	secretAccessKey := os.Getenv("STORAGE_SECRET_KEY")
-	useSSL := false
-
-	common.LogVideoUploadError(fmt.Errorf("StorageService Initialization: Endpoint=%s, AccessKeyID=%s, UseSSL=%v", endpoint, accessKeyID, useSSL))
-
-	var creds *credentials.Credentials
-	if accessKeyID != "" && secretAccessKey != "" {
-		// ローカル環境や手動で設定したキーを使用する場合
-		creds = credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
-		useSSL = os.Getenv("STORAGE_USE_SSL") == "true"
-	} else {
-		// AWS環境でIAMロールを使用する場合
-		creds = credentials.NewIAM("")
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = "ap-northeast-1" // デフォルトのリージョン
 	}
 
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  creds,
-		Secure: useSSL,
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(region),
 	})
-
 	if err != nil {
-		common.LogVideoUploadError(fmt.Errorf("MinIOクライアントの初期化に失敗しました: Endpoint=%s, Error=%w", endpoint, err))
+		common.LogVideoUploadError(fmt.Errorf("AWSセッションの初期化に失敗しました: %w", err))
 		return nil, err
 	}
+
+	client := s3.New(sess)
 
 	bucketName := os.Getenv("STORAGE_BUCKET")
 	common.LogVideoUploadError(fmt.Errorf("Using Bucket=%s", bucketName))
-
-	exists, err := client.BucketExists(context.Background(), bucketName)
-	if err != nil {
-		common.LogVideoUploadError(fmt.Errorf("バケットの存在確認に失敗しました: %w", err))
-		return nil, err
-	}
-	if !exists {
-		err = client.MakeBucket(context.Background(), bucketName, minio.MakeBucketOptions{})
-		if err != nil {
-			common.LogVideoUploadError(fmt.Errorf("バケットの作成に失敗しました: %w", err))
-			return nil, err
-		}
-	}
 
 	return &StorageService{
 		Client: client,
@@ -95,16 +71,28 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 
 	contentType := fileHeader.Header.Get("Content-Type")
 
-	// ファイルをMinIOにアップロード
-	_, err := s.Client.PutObject(context.Background(), s.Bucket, objectName, file, fileHeader.Size, minio.PutObjectOptions{
-		ContentType: contentType,
+	// ファイルの内容をバイトスライスに変換
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(file)
+	if err != nil {
+		common.LogVideoUploadError(fmt.Errorf("ファイルの読み込みに失敗しました: %w", err))
+		return "", err
+	}
+	fileBytes := buf.Bytes()
+
+	// ファイルをS3にアップロード
+	_, err = s.Client.PutObject(&s3.PutObjectInput{
+		Bucket:      aws.String(s.Bucket),
+		Key:         aws.String(objectName),
+		Body:        bytes.NewReader(fileBytes),
+		ContentType: aws.String(contentType),
 	})
 	if err != nil {
 		common.LogVideoUploadError(fmt.Errorf("ファイルのアップロードに失敗しました: %w", err))
 		return "", err
 	}
 
-	fileURL := fmt.Sprintf("%s/%s/%s", os.Getenv("STORAGE_ENDPOINT"), s.Bucket, objectName)
+	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
 	return fileURL, nil
 }
 
@@ -134,15 +122,27 @@ func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *mu
 
 	contentType := fileHeader.Header.Get("Content-Type")
 
-	// ファイルをMinIOにアップロード
-	_, err := s.Client.PutObject(context.Background(), s.Bucket, objectName, file, fileHeader.Size, minio.PutObjectOptions{
-		ContentType: contentType,
+	// ファイルの内容をバイトスライスに変換
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(file)
+	if err != nil {
+		common.LogVideoUploadError(fmt.Errorf("サムネイルファイルの読み込みに失敗しました: %w", err))
+		return "", err
+	}
+	fileBytes := buf.Bytes()
+
+	// サムネイルファイルをS3にアップロード
+	_, err = s.Client.PutObject(&s3.PutObjectInput{
+		Bucket:      aws.String(s.Bucket),
+		Key:         aws.String(objectName),
+		Body:        bytes.NewReader(fileBytes),
+		ContentType: aws.String(contentType),
 	})
 	if err != nil {
 		common.LogVideoUploadError(fmt.Errorf("サムネイルのアップロードに失敗しました: %w", err))
 		return "", err
 	}
 
-	fileURL := fmt.Sprintf("%s/%s/%s", os.Getenv("STORAGE_ENDPOINT"), s.Bucket, objectName)
+	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
 	return fileURL, nil
 }
