@@ -152,23 +152,17 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 			return "", fmt.Errorf("Failed to generate presigned URL for video: %w", err)
 		}
 
-		// 署名付きURLのパス部分だけを取り出す
-		parsedURL, err := url.Parse(presignedURL)
-		if err != nil {
-			return "", fmt.Errorf("Failed to parse presigned URL: %w", err)
-		}
-		urlPath := parsedURL.Path
-
-		// CloudFrontのドメインを付加
+		// CloudFrontドメインの設定
 		cloudFrontDomain := os.Getenv("CLOUDFRONT_DOMAIN")
 		if cloudFrontDomain == "" {
-			common.LogVideoHubInfo("CLOUDFRONT_DOMAIN is not set")
 			return "", fmt.Errorf("CLOUDFRONT_DOMAIN is not set")
 		}
 		cloudFrontDomain = strings.TrimPrefix(cloudFrontDomain, "https://")
+		cloudFrontDomain = strings.TrimPrefix(cloudFrontDomain, "http://")
 
-		urlStr := fmt.Sprintf("https://%s%s?%s", cloudFrontDomain, urlPath, parsedURL.RawQuery)
-		common.LogVideoHubInfo(fmt.Sprintf("urlStr: %s", urlStr))
+		// S3のドメイン部分を削除し、CloudFrontのドメインを付加
+		urlStr := strings.TrimPrefix(presignedURL, "https://live-go.s3.ap-northeast-1.amazonaws.com")
+		urlStr = fmt.Sprintf("https://%s%s", cloudFrontDomain, urlStr)
 
 		return urlStr, nil
 	} else {
