@@ -18,8 +18,6 @@ type Credentials struct {
 	Password string `json:"pass" validate:"required,min=8"`
 }
 
-// `jwtKey` と `Claims` は既に定義されていると仮定し、それを再利用
-
 func Register(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
@@ -75,7 +73,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	// JWTトークンの作成
 	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &Claims{
+	claims := &common.Claims{
 		UserID: user.ID,
 		Mail:   user.Mail,
 		StandardClaims: jwt.StandardClaims{
@@ -84,7 +82,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
+	tokenString, err := token.SignedString(common.JwtKey)
 	if err != nil {
 		common.LogUser(common.ERROR, "Failed to generate JWT: "+err.Error())
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -96,6 +94,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User registered successfully",
-		"token":   tokenString, // JWTトークンを返す
+		"token":   tokenString,
 	})
 }

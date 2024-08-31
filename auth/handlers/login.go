@@ -18,14 +18,6 @@ type LoginCredentials struct {
 	Pass string `json:"pass" validate:"required"`
 }
 
-var jwtKey = []byte("your_secret_key")
-
-type Claims struct {
-	UserID uint   `json:"user_id"`
-	Mail   string `json:"mail"`
-	jwt.StandardClaims
-}
-
 func Login(w http.ResponseWriter, r *http.Request) {
 	var creds LoginCredentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
@@ -62,7 +54,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	// JWTトークンの作成
 	expirationTime := time.Now().Add(7 * 24 * time.Hour)
-	claims := &Claims{
+	claims := &common.Claims{
 		UserID: user.ID,
 		Mail:   user.Mail,
 		StandardClaims: jwt.StandardClaims{
@@ -71,7 +63,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
+	tokenString, err := token.SignedString(common.JwtKey)
 	if err != nil {
 		common.LogUser(common.ERROR, "Failed to generate JWT: "+err.Error())
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
