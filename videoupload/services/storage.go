@@ -88,7 +88,14 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 		ContentType: aws.String(contentType),
 	})
 	if err != nil {
-		common.LogVideoUploadError(fmt.Errorf("ファイルのアップロードに失敗しました: %w", err))
+		// エラーの種類と詳細をログに出力
+		common.LogVideoUploadError(fmt.Errorf(
+			"ファイルのアップロードに失敗しました: %w | Bucket: %s, Key: %s, Content-Type: %s",
+			err,
+			s.Bucket,
+			objectName,
+			contentType,
+		))
 		return "", err
 	}
 
