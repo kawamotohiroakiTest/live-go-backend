@@ -230,6 +230,6 @@ func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *mu
 		fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
 		return fileURL, nil
 	} else {
-		return "", fmt.Errorf("ストレージクライアントが初期化されていません")
+		return "", fmt.Errorf("ストレージクライアントが初期化されていません。")
 	}
 }
