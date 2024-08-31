@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -29,11 +32,22 @@ func NewStorageService() (*StorageService, error) {
 		LogLevel: aws.LogLevel(aws.LogDebugWithHTTPBody), // デバッグログを有効化
 	})
 	if err != nil {
-		common.LogVideoUploadError(fmt.Errorf("AWSセッションの初期化に失敗しました: %w", err))
-		return nil, err
+		errorMessage := fmt.Sprintf("AWSセッションの初期化に失敗しました: %v", err)
+		common.LogVideoUploadError(fmt.Errorf(errorMessage))
+		return nil, fmt.Errorf(errorMessage)
 	}
 
-	client := s3.New(sess)
+	// ECSのメタデータサービスから認証情報を取得するプロバイダーの設定
+	creds := credentials.NewChainCredentials(
+		[]credentials.Provider{
+			&ec2rolecreds.EC2RoleProvider{
+				Client: ec2metadata.New(sess),
+			},
+		})
+
+	client := s3.New(sess, &aws.Config{
+		Credentials: creds,
+	})
 
 	bucketName := os.Getenv("STORAGE_BUCKET")
 	common.LogVideoUploadError(fmt.Errorf("Using Bucket=%s", bucketName))
