@@ -29,7 +29,9 @@ func init() {
 
 	// error.log ロガーの初期化
 	errorLogger = logrus.New()
-	errorLogger.SetFormatter(&logrus.JSONFormatter{})
+	errorLogger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+	})
 	errorLogFile, err := os.OpenFile("logs/error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open error log file: %v", err)
@@ -39,7 +41,9 @@ func init() {
 
 	// todo.log ロガーの初期化
 	todoLogger = logrus.New()
-	todoLogger.SetFormatter(&logrus.JSONFormatter{})
+	todoLogger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+	})
 	todoLogFile, err := os.OpenFile("logs/todo.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open todo log file: %v", err)
@@ -49,7 +53,9 @@ func init() {
 
 	// user.log ロガーの初期化
 	userLogger = logrus.New()
-	userLogger.SetFormatter(&logrus.JSONFormatter{})
+	userLogger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+	})
 	userLogFile, err := os.OpenFile("logs/user.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open user log file: %v", err)
@@ -59,7 +65,9 @@ func init() {
 
 	// videoupload.log ロガーの初期化
 	videouploadLogger = logrus.New()
-	videouploadLogger.SetFormatter(&logrus.JSONFormatter{})
+	videouploadLogger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+	})
 	videouploadLogFile, err := os.OpenFile("logs/videoupload.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logrus.Fatalf("Failed to open videoupload log file: %v", err)
