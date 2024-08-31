@@ -25,7 +25,8 @@ func NewStorageService() (*StorageService, error) {
 	}
 
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(region),
+		Region:   aws.String(region),
+		LogLevel: aws.LogLevel(aws.LogDebugWithHTTPBody), // デバッグログを有効化
 	})
 	if err != nil {
 		common.LogVideoUploadError(fmt.Errorf("AWSセッションの初期化に失敗しました: %w", err))
