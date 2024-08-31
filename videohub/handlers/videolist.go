@@ -36,16 +36,6 @@ func ListVideos(w http.ResponseWriter, r *http.Request) {
 	// サムネイルと動画の署名付きURLを生成
 	for _, video := range videos {
 		for i, file := range video.Files {
-			// サムネイルURLの生成
-			// if file.ThumbnailPath != "" {
-			// 	video.Files[i].ThumbnailPath, err = storageService.GetThumbnailPresignedURL(file.ThumbnailPath)
-			// 	if err != nil {
-			// 		common.LogVideoHubError(err)
-			// 		http.Error(w, "サムネイルURLの取得に失敗しました", http.StatusInternalServerError)
-			// 		return
-			// 	}
-			// }
-
 			// 動画URLの生成
 			if file.FilePath != "" {
 				video.Files[i].FilePath, err = storageService.GetVideoPresignedURL(file.FilePath)
