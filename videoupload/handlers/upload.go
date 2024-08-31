@@ -6,10 +6,12 @@ import (
 	"live/videoupload/models"
 	"live/videoupload/services"
 	"net/http"
+	"os"
 	"strconv"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
+
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		common.LogVideoUploadError(err)
@@ -45,7 +47,17 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storageService, err := services.NewStorageService()
+	// ENV_MODEの取得
+	envMode := os.Getenv("ENV_MODE")
+
+	var storageService *services.StorageService
+
+	if envMode == "local" {
+		storageService, err = services.InitMinioService()
+	} else {
+		storageService, err = services.NewStorageService()
+	}
+
 	if err != nil {
 		common.LogVideoUploadError(err)
 		tx.Rollback()

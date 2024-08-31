@@ -14,13 +14,17 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/minio/minio-go/v7"
+	minioCredentials "github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type StorageService struct {
-	Client *s3.S3
-	Bucket string
+	Client      *s3.S3
+	MinioClient *minio.Client
+	Bucket      string
 }
 
+// S3クライアントを作成する
 func NewStorageService() (*StorageService, error) {
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
@@ -61,6 +65,45 @@ func NewStorageService() (*StorageService, error) {
 	}, nil
 }
 
+// MinIOクライアントを作成する
+func InitMinioService() (*StorageService, error) {
+	endpoint := os.Getenv("STORAGE_ENDPOINT")
+	if endpoint == "" {
+		return nil, fmt.Errorf("STORAGE_ENDPOINT 環境変数が設定されていません")
+	}
+
+	accessKey := os.Getenv("STORAGE_ACCESS_KEY")
+	if accessKey == "" {
+		return nil, fmt.Errorf("STORAGE_ACCESS_KEY 環境変数が設定されていません")
+	}
+
+	secretKey := os.Getenv("STORAGE_SECRET_KEY")
+	if secretKey == "" {
+		return nil, fmt.Errorf("STORAGE_SECRET_KEY 環境変数が設定されていません")
+	}
+
+	bucketName := os.Getenv("STORAGE_BUCKET")
+	if bucketName == "" {
+		return nil, fmt.Errorf("STORAGE_BUCKET 環境変数が設定されていません")
+	}
+
+	useSSL := os.Getenv("STORAGE_USE_SSL") == "true"
+
+	// MinIOクライアントの初期化
+	minioClient, err := minio.New(endpoint, &minio.Options{
+		Creds:  minioCredentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure: useSSL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("MinIOクライアントの初期化に失敗しました: %w", err)
+	}
+
+	return &StorageService{
+		MinioClient: minioClient,
+		Bucket:      bucketName,
+	}, nil
+}
+
 func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
 	defer file.Close() // ファイルを閉じるためのdefer
 
@@ -97,20 +140,32 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // タイムアウト設定
 	defer cancel()
 
-	// ファイルをS3にアップロード
-	_, err = s.Client.PutObjectWithContext(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(s.Bucket),
-		Key:         aws.String(objectName),
-		Body:        bytes.NewReader(buf.Bytes()),
-		ContentType: aws.String(contentType),
-	})
-	if err != nil {
-		return "", fmt.Errorf("ファイルのアップロードに失敗しました: %w | Bucket: %s, Key: %s, Content-Type: %s",
-			err, s.Bucket, objectName, contentType)
+	if s.MinioClient != nil { // MinIOを使用する場合
+		_, err = s.MinioClient.PutObject(ctx, s.Bucket, objectName, bytes.NewReader(buf.Bytes()), int64(buf.Len()), minio.PutObjectOptions{
+			ContentType: contentType,
+		})
+		if err != nil {
+			return "", fmt.Errorf("MinIOへのファイルのアップロードに失敗しました: %w | Bucket: %s, Key: %s, Content-Type: %s",
+				err, s.Bucket, objectName, contentType)
+		}
+		fileURL := fmt.Sprintf("%s/%s/%s", os.Getenv("STORAGE_ENDPOINT"), s.Bucket, objectName)
+		return fileURL, nil
+	} else if s.Client != nil { // S3を使用する場合
+		_, err = s.Client.PutObjectWithContext(ctx, &s3.PutObjectInput{
+			Bucket:      aws.String(s.Bucket),
+			Key:         aws.String(objectName),
+			Body:        bytes.NewReader(buf.Bytes()),
+			ContentType: aws.String(contentType),
+		})
+		if err != nil {
+			return "", fmt.Errorf("S3へのファイルのアップロードに失敗しました: %w | Bucket: %s, Key: %s, Content-Type: %s",
+				err, s.Bucket, objectName, contentType)
+		}
+		fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
+		return fileURL, nil
+	} else {
+		return "", fmt.Errorf("ストレージクライアントが初期化されていません")
 	}
-
-	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
-	return fileURL, nil
 }
 
 // サムネイルをアップロードするメソッド
@@ -148,18 +203,33 @@ func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *mu
 	}
 	fileBytes := buf.Bytes()
 
-	// サムネイルファイルをS3にアップロード
-	_, err = s.Client.PutObject(&s3.PutObjectInput{
-		Bucket:      aws.String(s.Bucket),
-		Key:         aws.String(objectName),
-		Body:        bytes.NewReader(fileBytes),
-		ContentType: aws.String(contentType),
-	})
-	if err != nil {
-		common.LogVideoUploadError(fmt.Errorf("サムネイルのアップロードに失敗しました: %w", err))
-		return "", err
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // タイムアウト設定
+	defer cancel()
 
-	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
-	return fileURL, nil
+	if s.MinioClient != nil { // MinIOを使用する場合
+		_, err = s.MinioClient.PutObject(ctx, s.Bucket, objectName, bytes.NewReader(fileBytes), int64(len(fileBytes)), minio.PutObjectOptions{
+			ContentType: contentType,
+		})
+		if err != nil {
+			common.LogVideoUploadError(fmt.Errorf("MinIOへのサムネイルのアップロードに失敗しました: %w", err))
+			return "", err
+		}
+		fileURL := fmt.Sprintf("%s/%s/%s", os.Getenv("STORAGE_ENDPOINT"), s.Bucket, objectName)
+		return fileURL, nil
+	} else if s.Client != nil { // S3を使用する場合
+		_, err = s.Client.PutObject(&s3.PutObjectInput{
+			Bucket:      aws.String(s.Bucket),
+			Key:         aws.String(objectName),
+			Body:        bytes.NewReader(fileBytes),
+			ContentType: aws.String(contentType),
+		})
+		if err != nil {
+			common.LogVideoUploadError(fmt.Errorf("S3へのサムネイルのアップロードに失敗しました: %w", err))
+			return "", err
+		}
+		fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
+		return fileURL, nil
+	} else {
+		return "", fmt.Errorf("ストレージクライアントが初期化されていません")
+	}
 }
