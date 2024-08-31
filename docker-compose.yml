@@ -47,8 +47,8 @@ services:
     image: minio/minio
     container_name: minio
     environment:
-      MINIO_ROOT_USER: "minioadmin"
-      MINIO_ROOT_PASSWORD: "minioadmin"
+      STORAGE_ACCESS_KEY: "minioadmin"
+      STORAGE_SECRET_KEY: "minioadmin"
       TZ: "Asia/Tokyo"
     volumes:
       - minio-data:/data
