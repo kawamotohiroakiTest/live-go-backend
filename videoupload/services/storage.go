@@ -100,3 +100,54 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
 	return fileURL, nil
 }
+
+// サムネイルをアップロードするメソッド
+func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
+	// ファイル名を `thumbnails/` プレフィックスにする
+	objectName := "thumbnails/" + common.GenerateUniqueFileName(fileHeader.Filename)
+
+	ext := filepath.Ext(objectName)
+	validExtensions := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+		".bmp":  true,
+		".tiff": true,
+		".webp": true,
+		".ico":  true,
+		".svg":  true,
+	}
+
+	if !validExtensions[ext] {
+		err := fmt.Errorf("無効なファイル拡張子: %s", ext)
+		common.LogVideoUploadError(err)
+		return "", err
+	}
+
+	contentType := fileHeader.Header.Get("Content-Type")
+
+	// ファイルの内容をバイトスライスに変換
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(file)
+	if err != nil {
+		common.LogVideoUploadError(fmt.Errorf("サムネイルファイルの読み込みに失敗しました: %w", err))
+		return "", err
+	}
+	fileBytes := buf.Bytes()
+
+	// サムネイルファイルをS3にアップロード
+	_, err = s.Client.PutObject(&s3.PutObjectInput{
+		Bucket:      aws.String(s.Bucket),
+		Key:         aws.String(objectName),
+		Body:        bytes.NewReader(fileBytes),
+		ContentType: aws.String(contentType),
+	})
+	if err != nil {
+		common.LogVideoUploadError(fmt.Errorf("サムネイルのアップロードに失敗しました: %w", err))
+		return "", err
+	}
+
+	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
+	return fileURL, nil
+}
