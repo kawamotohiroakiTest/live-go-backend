@@ -151,6 +151,7 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 		if err != nil {
 			return "", fmt.Errorf("Failed to generate presigned URL for video: %w", err)
 		}
+		common.LogVideoHubInfo(fmt.Sprintf("urlStr: %s", presignedURL))
 		return presignedURL, nil
 	} else {
 		return "", fmt.Errorf("Storage service is not initialized")
