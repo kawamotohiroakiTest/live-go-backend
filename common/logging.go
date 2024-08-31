@@ -136,3 +136,11 @@ func LogVideoHubError(err error) {
 		"message":   err.Error(),
 	}).Error()
 }
+
+func LogVideoHubInfo(message string) {
+	videohubLogger.WithFields(logrus.Fields{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"level":     "INFO",
+		"message":   message,
+	}).Info()
+}

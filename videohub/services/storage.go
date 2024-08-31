@@ -1,8 +1,13 @@
 package services
 
 import (
+	"context"
 	"fmt"
+	"live/common"
+	"net/url"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -93,4 +98,61 @@ func InitMinioService() (*StorageService, error) {
 		MinioClient: minioClient,
 		Bucket:      bucketName,
 	}, nil
+}
+
+func (s *StorageService) GetThumbnailPresignedURL(objectName string) (string, error) {
+	if s.MinioClient != nil {
+		// MinIOで署名付きURLを生成
+		reqParams := url.Values{}
+		presignedURL, err := s.MinioClient.PresignedGetObject(context.Background(), s.Bucket, objectName, time.Duration(24)*time.Hour, reqParams)
+		if err != nil {
+			return "", fmt.Errorf("Failed to generate presigned URL: %w", err)
+		}
+		return presignedURL.String(), nil
+	} else if s.Client != nil {
+		// S3で署名付きURLを生成
+		req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
+			Bucket: aws.String(s.Bucket),
+			Key:    aws.String(objectName),
+		})
+		presignedURL, err := req.Presign(24 * time.Hour)
+		if err != nil {
+			return "", fmt.Errorf("Failed to generate presigned URL: %w", err)
+		}
+		return presignedURL, nil
+	} else {
+		return "", fmt.Errorf("Storage service is not initialized")
+	}
+}
+
+func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) {
+
+	common.LogVideoHubInfo(fmt.Sprintf("videoPath: %s", videoPath))
+
+	if s.MinioClient != nil {
+		minioEndpoint := os.Getenv("MINIO_ENDPOINT")
+		if minioEndpoint == "" {
+			return "", fmt.Errorf("MINIO_ENDPOINT is not set")
+		}
+
+		urlStr := videoPath
+		urlStr = strings.Replace(urlStr, "minio:9000/", "http://localhost:9000/", 1)
+
+		common.LogVideoHubInfo(fmt.Sprintf("urlStr: %s", urlStr))
+
+		return urlStr, nil
+	} else if s.Client != nil {
+		// S3で署名付きURLを生成
+		req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
+			Bucket: aws.String(s.Bucket),
+			Key:    aws.String(videoPath),
+		})
+		presignedURL, err := req.Presign(24 * time.Hour)
+		if err != nil {
+			return "", fmt.Errorf("Failed to generate presigned URL for video: %w", err)
+		}
+		return presignedURL, nil
+	} else {
+		return "", fmt.Errorf("Storage service is not initialized")
+	}
 }
