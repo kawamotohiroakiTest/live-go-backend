@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -31,10 +32,21 @@ func NewStorageService() (*StorageService, error) {
 		return nil, fmt.Errorf("STORAGE_BUCKET 環境変数が設定されていません")
 	}
 
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	if accessKey == "" {
+		return nil, fmt.Errorf("AWS_ACCESS_KEY_ID 環境変数が設定されていません")
+	}
+
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	if secretKey == "" {
+		return nil, fmt.Errorf("AWS_SECRET_ACCESS_KEY 環境変数が設定されていません")
+	}
+
 	// セッションの作成
 	sess, err := session.NewSession(&aws.Config{
-		Region:   aws.String(region),
-		LogLevel: aws.LogLevel(aws.LogDebugWithHTTPBody),
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(accessKey, secretKey, ""),
+		LogLevel:    aws.LogLevel(aws.LogDebugWithHTTPBody),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("AWSセッションの初期化に失敗しました: %w", err)
