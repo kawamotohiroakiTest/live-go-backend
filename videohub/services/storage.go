@@ -151,9 +151,17 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 		if err != nil {
 			return "", fmt.Errorf("Failed to generate presigned URL for video: %w", err)
 		}
+		common.LogVideoHubInfo(fmt.Sprintf("presignedURL: %s", presignedURL))
 
-		// S3のドメイン部分を削除
-		urlStr := strings.Replace(presignedURL, "https://"+s.Bucket+".s3.amazonaws.com/", "", 1)
+		// 必要な部分を取り出すためにパスの部分だけを抽出
+		parsedURL, err := url.Parse(presignedURL)
+		if err != nil {
+			return "", fmt.Errorf("Failed to parse presigned URL: %w", err)
+		}
+		common.LogVideoHubInfo(fmt.Sprintf("parsedURL: %s", parsedURL))
+
+		urlPath := parsedURL.Path
+		common.LogVideoHubInfo(fmt.Sprintf("urlPath: %s", urlPath))
 
 		// CloudFrontのドメインを付加
 		cloudFrontDomain := os.Getenv("CLOUDFRONT_DOMAIN")
@@ -161,7 +169,9 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 			common.LogVideoHubInfo("CLOUDFRONT_DOMAIN is not set")
 			return "", fmt.Errorf("CLOUDFRONT_DOMAIN is not set")
 		}
-		urlStr = "https://" + cloudFrontDomain + "/" + urlStr
+		common.LogVideoHubInfo(fmt.Sprintf("cloudFrontDomain: %s", cloudFrontDomain))
+
+		urlStr := "https://" + cloudFrontDomain + urlPath + "?" + parsedURL.RawQuery
 		common.LogVideoHubInfo(fmt.Sprintf("urlStr: %s", urlStr))
 
 		return urlStr, nil
