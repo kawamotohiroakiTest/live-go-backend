@@ -155,6 +155,7 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 		// CloudFrontのドメインに置き換え
 		cloudFrontDomain := os.Getenv("CLOUDFRONT_DOMAIN")
 		if cloudFrontDomain == "" {
+			common.LogVideoHubInfo("CLOUDFRONT_DOMAIN is not set")
 			return "", fmt.Errorf("CLOUDFRONT_DOMAIN is not set")
 		}
 		urlStr := strings.Replace(presignedURL, s.Bucket+".s3.amazonaws.com", cloudFrontDomain, 1)
