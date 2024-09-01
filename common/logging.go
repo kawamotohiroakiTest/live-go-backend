@@ -13,6 +13,7 @@ var (
 	todoLogger        *logrus.Logger
 	userLogger        *logrus.Logger
 	videouploadLogger *logrus.Logger
+	videohubLogger    *logrus.Logger
 )
 
 func init() {
@@ -74,6 +75,18 @@ func init() {
 	}
 	// 標準出力とファイルの両方に書き込み
 	videouploadLogger.SetOutput(io.MultiWriter(stdOut, videouploadLogFile))
+
+	// videohub.log ロガーの初期化
+	videohubLogger = logrus.New()
+	videohubLogger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+	})
+	videohubLogFile, err := os.OpenFile("logs/videohub.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		logrus.Fatalf("Failed to open videohub log file: %v", err)
+	}
+	// 標準出力とファイルの両方に書き込み
+	videohubLogger.SetOutput(io.MultiWriter(stdOut, videohubLogFile))
 }
 
 func LogError(err error) {
@@ -114,4 +127,20 @@ func LogVideoUploadError(err error) {
 		"level":     "ERROR",
 		"message":   err.Error(),
 	}).Error()
+}
+
+func LogVideoHubError(err error) {
+	videohubLogger.WithFields(logrus.Fields{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"level":     "ERROR",
+		"message":   err.Error(),
+	}).Error()
+}
+
+func LogVideoHubInfo(message string) {
+	videohubLogger.WithFields(logrus.Fields{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"level":     "INFO",
+		"message":   message,
+	}).Info()
 }

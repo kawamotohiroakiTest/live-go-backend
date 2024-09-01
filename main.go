@@ -6,6 +6,7 @@ import (
 	"live/auth"
 	"live/common"
 	"live/db"
+	"live/videohub"
 	"live/videoupload"
 	"net/http"
 	"os"
@@ -44,11 +45,12 @@ func main() {
 
 	auth.RegisterRoutes(r)
 	videoupload.RegisterRoutes(r)
+	videohub.RegisterRoutes(r)
 
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
 
-	common.LogTodo(common.INFO, "Starting server on port: "+port)
+	common.LogTodo(common.INFO, "Starting server on port!: "+port)
 	if err := http.ListenAndServe(":"+port, common.EnableCors(r)); err != nil {
 		common.LogError(fmt.Errorf("Error starting server: %v", err))
 	}

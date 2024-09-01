@@ -75,16 +75,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// サムネイルファイルの処理
-	thumbnail, thumbnailHeader, err := r.FormFile("thumbnail")
-	if err != nil {
-		common.LogVideoUploadError(err)
-		tx.Rollback()
-		http.Error(w, "サムネイルファイルの取得に失敗しました", http.StatusBadRequest)
-		return
-	}
-	defer thumbnail.Close()
-
 	// 動画ファイルのアップロード
 	fileURL, err := storageService.UploadFile(file, fileHeader)
 	if err != nil {
@@ -94,22 +84,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// サムネイルファイルのアップロード
-	thumbnailURL, err := storageService.UploadThumbnailFile(thumbnail, thumbnailHeader)
-	if err != nil {
-		common.LogVideoUploadError(err)
-		tx.Rollback()
-		http.Error(w, "サムネイルファイルのアップロードに失敗しました", http.StatusInternalServerError)
-		return
-	}
-
 	// 動画ファイル情報の保存
 	durationStr := r.FormValue("duration")
 	duration, _ := strconv.Atoi(durationStr)
 	fileSize := uint64(fileHeader.Size)
 	format := fileHeader.Header.Get("Content-Type")
 
-	_, err = models.SaveVideoFileWithTransaction(tx, video.ID, fileURL, thumbnailURL, uint(duration), fileSize, format)
+	_, err = models.SaveVideoFileWithTransaction(tx, video.ID, fileURL, uint(duration), fileSize, format)
 	if err != nil {
 		common.LogVideoUploadError(err)
 		tx.Rollback()
@@ -127,5 +108,5 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	// 成功レスポンスを返す
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"video_url":"`+fileURL+`", "thumbnail_url":"`+thumbnailURL+`"}`)
+	io.WriteString(w, `{"video_url":"`+fileURL+`"}`)
 }
