@@ -148,8 +148,7 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 			return "", fmt.Errorf("MinIOへのファイルのアップロードに失敗しました: %w | Bucket: %s, Key: %s, Content-Type: %s",
 				err, s.Bucket, objectName, contentType)
 		}
-		fileURL := fmt.Sprintf("%s/%s/%s", os.Getenv("STORAGE_ENDPOINT"), s.Bucket, objectName)
-		return fileURL, nil
+		return objectName, nil
 	} else if s.Client != nil { // S3を使用する場合
 		_, err = s.Client.PutObjectWithContext(ctx, &s3.PutObjectInput{
 			Bucket:      aws.String(s.Bucket),
@@ -161,8 +160,7 @@ func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.F
 			return "", fmt.Errorf("S3へのファイルのアップロードに失敗しました: %w | Bucket: %s, Key: %s, Content-Type: %s",
 				err, s.Bucket, objectName, contentType)
 		}
-		fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.Bucket, os.Getenv("AWS_REGION"), objectName)
-		return fileURL, nil
+		return objectName, nil
 	} else {
 		return "", fmt.Errorf("ストレージクライアントが初期化されていません")
 	}

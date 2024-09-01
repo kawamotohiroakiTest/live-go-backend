@@ -142,6 +142,9 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 
 		return urlStr, nil
 	} else if s.Client != nil {
+
+		common.LogVideoHubInfo(fmt.Sprintf("Bucket: %s, Key: %s", s.Bucket, videoPath))
+
 		req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
 			Bucket: aws.String(s.Bucket),
 			Key:    aws.String(videoPath),
