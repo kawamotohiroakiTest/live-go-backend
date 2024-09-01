@@ -1,12 +1,9 @@
 package services
 
 import (
-	"context"
 	"fmt"
 	"live/common"
-	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -100,31 +97,6 @@ func InitMinioService() (*StorageService, error) {
 	}, nil
 }
 
-func (s *StorageService) GetThumbnailPresignedURL(objectName string) (string, error) {
-	if s.MinioClient != nil {
-		// MinIOで署名付きURLを生成
-		reqParams := url.Values{}
-		presignedURL, err := s.MinioClient.PresignedGetObject(context.Background(), s.Bucket, objectName, time.Duration(24)*time.Hour, reqParams)
-		if err != nil {
-			return "", fmt.Errorf("Failed to generate presigned URL: %w", err)
-		}
-		return presignedURL.String(), nil
-	} else if s.Client != nil {
-		// S3で署名付きURLを生成
-		req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
-			Bucket: aws.String(s.Bucket),
-			Key:    aws.String(objectName),
-		})
-		presignedURL, err := req.Presign(24 * time.Hour)
-		if err != nil {
-			return "", fmt.Errorf("Failed to generate presigned URL: %w", err)
-		}
-		return presignedURL, nil
-	} else {
-		return "", fmt.Errorf("Storage service is not initialized")
-	}
-}
-
 func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) {
 
 	if s.MinioClient != nil {
@@ -137,14 +109,10 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 
 		return urlStr, nil
 	} else if s.Client != nil {
-
-		common.LogVideoHubInfo(fmt.Sprintf("Bucket: %s, Key: %s", s.Bucket, videoPath))
-
 		req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
 			Bucket: aws.String(s.Bucket),
 			Key:    aws.String(videoPath),
 		})
-		common.LogVideoHubInfo(fmt.Sprintf("req: %s", req))
 
 		presignedURL, err := req.Presign(24 * time.Hour)
 		if err != nil {
@@ -152,17 +120,8 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 
 			return "", fmt.Errorf("Failed to generate presigned URL for video: %w", err)
 		}
-		common.LogVideoHubInfo(fmt.Sprintf("presignedURL: %s", presignedURL))
 
-		cloudFrontDomain := os.Getenv("CLOUDFRONT_DOMAIN")
-		if cloudFrontDomain == "" {
-			return "", fmt.Errorf("CLOUDFRONT_DOMAIN is not set")
-		}
-
-		cloudFrontURL := strings.Replace(presignedURL, fmt.Sprintf("https://%s.s3.%s.amazonaws.com", s.Bucket, os.Getenv("AWS_REGION")), fmt.Sprintf("https://%s", cloudFrontDomain), 1)
-		common.LogVideoHubInfo(fmt.Sprintf("CloudFront URL: %s", cloudFrontURL))
-
-		return cloudFrontURL, nil
+		return presignedURL, nil
 	} else {
 		return "", fmt.Errorf("Storage service is not initialized")
 	}
