@@ -78,14 +78,13 @@ func SaveVideoWithTransaction(tx *gorm.DB, userID uint, title, description strin
 }
 
 // トランザクションを使用して動画ファイル情報を保存する関数
-func SaveVideoFileWithTransaction(tx *gorm.DB, videoID uint, filePath, thumbnailPath string, duration uint, fileSize uint64, format string) (*VideoFile, error) {
+func SaveVideoFileWithTransaction(tx *gorm.DB, videoID uint, filePath string, duration uint, fileSize uint64, format string) (*VideoFile, error) {
 	videoFile := VideoFile{
-		VideoID:       videoID,
-		FilePath:      filePath,
-		ThumbnailPath: thumbnailPath,
-		Duration:      duration,
-		FileSize:      fileSize,
-		Format:        format,
+		VideoID:  videoID,
+		FilePath: filePath,
+		Duration: duration,
+		FileSize: fileSize,
+		Format:   format,
 	}
 
 	if err := tx.Create(&videoFile).Error; err != nil {

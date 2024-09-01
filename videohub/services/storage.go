@@ -127,18 +127,13 @@ func (s *StorageService) GetThumbnailPresignedURL(objectName string) (string, er
 
 func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) {
 
-	common.LogVideoHubInfo(fmt.Sprintf("videoPath: %s", videoPath))
-
 	if s.MinioClient != nil {
 		minioEndpoint := os.Getenv("MINIO_ENDPOINT")
 		if minioEndpoint == "" {
 			return "", fmt.Errorf("MINIO_ENDPOINT is not set")
 		}
 
-		urlStr := videoPath
-		urlStr = strings.Replace(urlStr, "minio:9000/", "http://localhost:9000/", 1)
-
-		common.LogVideoHubInfo(fmt.Sprintf("urlStr: %s", urlStr))
+		urlStr := fmt.Sprintf("http://%s/%s/%s", "localhost:9000", s.Bucket, videoPath)
 
 		return urlStr, nil
 	} else if s.Client != nil {
@@ -164,9 +159,7 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 			return "", fmt.Errorf("CLOUDFRONT_DOMAIN is not set")
 		}
 
-		cloudFrontURL := strings.Replace(presignedURL, fmt.Sprintf("https://%s.s3.amazonaws.com", s.Bucket), fmt.Sprintf("https://%s", cloudFrontDomain), 1)
-
-		// 署名付きURLをそのまま返す
+		cloudFrontURL := strings.Replace(presignedURL, fmt.Sprintf("https://%s.s3.%s.amazonaws.com", s.Bucket, os.Getenv("AWS_REGION")), fmt.Sprintf("https://%s", cloudFrontDomain), 1)
 		common.LogVideoHubInfo(fmt.Sprintf("CloudFront URL: %s", cloudFrontURL))
 
 		return cloudFrontURL, nil
