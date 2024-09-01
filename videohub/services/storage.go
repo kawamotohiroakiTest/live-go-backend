@@ -159,8 +159,17 @@ func (s *StorageService) GetVideoPresignedURL(videoPath string) (string, error) 
 		}
 		common.LogVideoHubInfo(fmt.Sprintf("presignedURL: %s", presignedURL))
 
+		cloudFrontDomain := os.Getenv("CLOUDFRONT_DOMAIN")
+		if cloudFrontDomain == "" {
+			return "", fmt.Errorf("CLOUDFRONT_DOMAIN is not set")
+		}
+
+		cloudFrontURL := strings.Replace(presignedURL, fmt.Sprintf("https://%s.s3.amazonaws.com", s.Bucket), fmt.Sprintf("https://%s", cloudFrontDomain), 1)
+
 		// 署名付きURLをそのまま返す
-		return presignedURL, nil
+		common.LogVideoHubInfo(fmt.Sprintf("CloudFront URL: %s", cloudFrontURL))
+
+		return cloudFrontURL, nil
 	} else {
 		return "", fmt.Errorf("Storage service is not initialized")
 	}
