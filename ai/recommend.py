@@ -16,7 +16,7 @@ personalize_runtime = session.client('personalize-runtime')
 
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    return 'Hello, World!!'
 
 @app.route('/recommendations/<user_id>', methods=['GET'])
 def get_recommendations(user_id):
