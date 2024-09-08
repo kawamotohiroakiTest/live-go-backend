@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"live/ai"
 	"live/auth"
 	"live/common"
 	"live/db"
@@ -46,6 +47,7 @@ func main() {
 	auth.RegisterRoutes(r)
 	videoupload.RegisterRoutes(r)
 	videohub.RegisterRoutes(r)
+	ai.RegisterRoutes(r)
 
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
 	r.HandleFunc("/api/v1/todo/{id}", common.TodoHandler)
