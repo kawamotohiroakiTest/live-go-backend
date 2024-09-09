@@ -12,7 +12,7 @@ import (
 
 var DB *gorm.DB
 
-func InitDB() {
+func InitDB() (*gorm.DB, error) {
 	user := os.Getenv("MYSQL_USER")
 	password := os.Getenv("MYSQL_PASSWORD")
 	host := os.Getenv("MYSQL_HOST")
@@ -23,7 +23,7 @@ func InitDB() {
 	var err error
 	for i := 0; i < 100; i++ {
 		DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Silent), // ログの詳細度を設定
+			Logger: logger.Default.LogMode(logger.Silent),
 		})
 		if err == nil {
 			sqlDB, err := DB.DB()
@@ -34,7 +34,7 @@ func InitDB() {
 			err = sqlDB.Ping()
 			if err == nil {
 				fmt.Println("Successfully connected to MySQL with GORM")
-				return
+				return DB, nil
 			}
 		}
 		fmt.Println("Failed to connect to MySQL with GORM. Retrying...")
@@ -42,5 +42,7 @@ func InitDB() {
 	}
 	if err != nil {
 		fmt.Printf("Error: Could not connect to MySQL after multiple attempts: %v\n", err)
+		return nil, err
 	}
+	return nil, fmt.Errorf("Unknown error in InitDB")
 }

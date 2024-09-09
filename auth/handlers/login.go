@@ -80,7 +80,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	// トークンをレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	jsonResponse := map[string]string{"token": tokenString}
+	jsonResponse := map[string]interface{}{
+		"token":   tokenString,
+		"user_id": user.ID,
+	}
 	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
 		common.LogUser(common.ERROR, "Failed to send JWT token response: "+err.Error())
 	}

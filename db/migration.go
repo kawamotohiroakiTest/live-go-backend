@@ -70,7 +70,6 @@ func RunMigration() {
 
 	if version == latestVersion && !dirty {
 		fmt.Println("No new migrations to apply.")
-		fmt.Printf("Current migration version: %d, Latest migration version: %d\n", version, latestVersion)
 		return
 	}
 	// 最新のマイグレーションファイルとそのバージョンを表示

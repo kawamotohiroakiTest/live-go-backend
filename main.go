@@ -30,7 +30,12 @@ func main() {
 		port = "8080"
 	}
 
-	common.InitDB()
+	// データベースの初期化
+	dbConn, err := common.InitDB()
+	if err != nil {
+		common.LogError(fmt.Errorf("Error initializing database: %v", err))
+		return
+	}
 
 	// コマンドラインフラグのチェック
 	if len(flag.Args()) > 0 && flag.Args()[0] == "migrate" {
@@ -46,7 +51,7 @@ func main() {
 
 	auth.RegisterRoutes(r)
 	videoupload.RegisterRoutes(r)
-	videohub.RegisterRoutes(r)
+	videohub.RegisterRoutes(r, dbConn)
 	ai.RegisterRoutes(r)
 
 	r.HandleFunc("/api/v1/health", common.HealthHandler)
