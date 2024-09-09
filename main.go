@@ -7,6 +7,7 @@ import (
 	"live/auth"
 	"live/common"
 	"live/db"
+	"live/db/seeders"
 	"live/videohub"
 	"live/videoupload"
 	"net/http"
@@ -46,6 +47,8 @@ func main() {
 	// マイグレーションの実行
 	common.LogTodo(common.INFO, "Running database migrations...")
 	db.RunMigration()
+
+	seeders.SeedUsers(dbConn)
 
 	r := mux.NewRouter()
 
