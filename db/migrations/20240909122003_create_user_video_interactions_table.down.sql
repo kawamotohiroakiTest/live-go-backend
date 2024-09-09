@@ -1,0 +1,9 @@
+-- インデックスを削除
+DROP INDEX idx_user_video_interactions_id ON user_video_interactions;
+DROP INDEX idx_user_video_interactions_user_id ON user_video_interactions;
+DROP INDEX idx_user_video_interactions_video_id ON user_video_interactions;
+DROP INDEX idx_user_video_interactions_event_type ON user_video_interactions;
+DROP INDEX idx_user_video_interactions_event_value ON user_video_interactions;
+
+-- テーブルの削除
+DROP TABLE user_video_interactions;
