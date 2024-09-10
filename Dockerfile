@@ -1,7 +1,7 @@
 FROM golang:1.22-alpine
 
-# 必要なパッケージをインストール
-RUN apk add --no-cache git curl tzdata
+# 必要なパッケージをインストール (ffmpegを含む)
+RUN apk add --no-cache git curl tzdata ffmpeg
 
 # タイムゾーンをAsia/Tokyoに設定
 RUN cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime \

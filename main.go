@@ -49,6 +49,7 @@ func main() {
 	db.RunMigration()
 
 	seeders.SeedUsers(dbConn)
+	seeders.SeedVideos(dbConn)
 
 	r := mux.NewRouter()
 
