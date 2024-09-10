@@ -1,10 +1,12 @@
 package seeders
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 
 	"live/auth/models"
@@ -37,6 +39,8 @@ func SeedUsers(db *gorm.DB) {
 		log.Fatal("PASSWORD_HASH is not set in environment variables")
 	}
 
+	var records [][]string
+
 	// 100件のユーザーを作成
 	for i := 1; i <= 100; i++ {
 		// メールアドレスと名前を作成
@@ -68,5 +72,56 @@ func SeedUsers(db *gorm.DB) {
 		} else {
 			fmt.Printf("Created or found user: %s\n", mail)
 		}
+
+		// CSVファイル用にレコードを追加
+		record := []string{
+			fmt.Sprint(user.ID),
+			user.Name,
+			user.Mail,
+			user.CreatedAt.String(),
+			user.LastLoginAt.String(),
+		}
+		records = append(records, record)
+
+		// CSVにエクスポート
+		headers := []string{"id", "name", "mail", "created_at", "last_login_at"}
+		err := createUserCSV("db/learningdata/users.csv", headers, records)
+		if err != nil {
+			fmt.Printf("Failed to export users to CSV: %v\n", err)
+		}
 	}
+}
+
+// CSVファイル作成関数
+func createUserCSV(filePath string, headers []string, records [][]string) error {
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %v", err)
+		}
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	err = writer.Write(headers)
+	if err != nil {
+		return fmt.Errorf("failed to write CSV header: %v", err)
+	}
+
+	for _, record := range records {
+		err := writer.Write(record)
+		if err != nil {
+			return fmt.Errorf("failed to write record: %v", err)
+		}
+	}
+
+	return nil
 }

@@ -1,11 +1,14 @@
 package seeders
 
 import (
+	"encoding/csv"
 	"fmt"
 	"live/auth/models"
 	videomodels "live/videohub/models"
 	"log"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"time"
 
 	"gorm.io/gorm"
@@ -28,6 +31,9 @@ func SeedUserVideoInteractions(db *gorm.DB) {
 		return
 	}
 
+	// CSVファイル用のデータを保持するスライス
+	var records [][]string
+
 	for i := 1; i <= 100; i++ {
 		// ランダムなユーザーとビデオを選択
 		user := users[rand.Intn(len(users))]
@@ -45,6 +51,57 @@ func SeedUserVideoInteractions(db *gorm.DB) {
 			log.Printf("Failed to create user video interaction: %v", err)
 		} else {
 			fmt.Printf("Created user video interaction: UserID=%d, VideoID=%d, EventType=%s\n", user.ID, video.ID, eventType)
+
+			// CSVに書き出すレコードを追加
+			record := []string{
+				fmt.Sprint(interaction.ID),
+				fmt.Sprint(interaction.UserID),
+				fmt.Sprint(interaction.VideoID),
+				interaction.EventType,
+				interaction.CreatedAt.String(),
+			}
+			records = append(records, record)
 		}
 	}
+
+	// CSVファイルにエクスポート
+	headers := []string{"id", "user_id", "video_id", "event_type", "created_at"}
+	err := createUserVideoInteractionsCSV("db/learningdata/user_video_interactions.csv", headers, records)
+	if err != nil {
+		fmt.Printf("Failed to export user video interactions to CSV: %v\n", err)
+	}
+}
+
+// CSVファイル作成関数
+func createUserVideoInteractionsCSV(filePath string, headers []string, records [][]string) error {
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %v", err)
+		}
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	err = writer.Write(headers)
+	if err != nil {
+		return fmt.Errorf("failed to write CSV header: %v", err)
+	}
+
+	for _, record := range records {
+		err := writer.Write(record)
+		if err != nil {
+			return fmt.Errorf("failed to write record: %v", err)
+		}
+	}
+
+	return nil
 }

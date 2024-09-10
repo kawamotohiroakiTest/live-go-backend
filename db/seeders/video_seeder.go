@@ -1,6 +1,7 @@
 package seeders
 
 import (
+	"encoding/csv"
 	"fmt"
 	"live/auth/models"                 // usersテーブルのエイリアスをauthに設定
 	videomodels "live/videohub/models" // videoモデルのエイリアスを設定
@@ -84,6 +85,8 @@ func getRandomUser(db *gorm.DB) (*models.User, error) {
 
 // シーダー関数の例
 func SeedVideos(db *gorm.DB) {
+	var records [][]string // CSV用のレコード
+
 	for i := 1; i <= 100; i++ {
 		// データベースからランダムにユーザーを取得
 		user, err := getRandomUser(db)
@@ -149,14 +152,34 @@ func SeedVideos(db *gorm.DB) {
 
 		if err := db.Create(&videoFile).Error; err != nil {
 			fmt.Printf("Failed to create video file: %v\n", err)
+			continue
 		}
+
+		// CSV用のレコードを作成
+		record := []string{
+			fmt.Sprint(video.ID),
+			fmt.Sprint(video.UserID),
+			video.Title,
+			video.Genre,
+			fmt.Sprint(video.ViewCount),
+			video.Created.String(),
+		}
+		records = append(records, record)
 	}
+
 	// moviesディレクトリを削除
 	err := clearMoviesDirectory("movies")
 	if err != nil {
 		fmt.Printf("Failed to clear movies directory: %v\n", err)
 	} else {
 		// fmt.Println("Successfully cleared movies directory")
+	}
+
+	// CSVファイルの作成
+	headers := []string{"id", "user_id", "title", "genre", "view_count", "created"}
+	err = createVideosCSV("db/learningdata/videos.csv", headers, records)
+	if err != nil {
+		fmt.Printf("Failed to create videos CSV: %v\n", err)
 	}
 }
 
@@ -166,6 +189,40 @@ func clearMoviesDirectory(dirPath string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to remove movies directory: %v", err)
 	}
+	return nil
+}
+
+// CSVファイルを作成する関数
+func createVideosCSV(filePath string, headers []string, records [][]string) error {
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %v", err)
+		}
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	err = writer.Write(headers)
+	if err != nil {
+		return fmt.Errorf("failed to write CSV header: %v", err)
+	}
+
+	for _, record := range records {
+		err := writer.Write(record)
+		if err != nil {
+			return fmt.Errorf("failed to write record: %v", err)
+		}
+	}
+
 	return nil
 }
 
