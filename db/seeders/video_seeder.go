@@ -2,14 +2,15 @@ package seeders
 
 import (
 	"fmt"
-	"live/videohub/models"
-	"log"
+	"live/auth/models"                 // usersテーブルのエイリアスをauthに設定
+	videomodels "live/videohub/models" // videoモデルのエイリアスを設定
+	"live/videoupload/services"
 	"math/rand"
-	"path/filepath"
-	"time"
-
 	"mime/multipart"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -21,59 +22,29 @@ var genres = []string{
 	"SF", "アニメ", "音楽", "スポーツ", "ニュース",
 }
 
-// シーダー関数の例
-func SeedVideos(db *gorm.DB) {
-	for i := 1; i <= 100; i++ {
-		// ユーザーIDをランダムに取得
-		userID := rand.Intn(100) + 1
-		genre := genres[rand.Intn(len(genres))]
-		title := fmt.Sprintf("%s映画%d", genre, i)
-		description := fmt.Sprintf("%s映画の説明%d", genre, i)
-
-		// 動画のローカルパス（ここではサンプル動画を生成するか、既存の動画を指定）
-		filePath := fmt.Sprintf("movies/%s.mp4", uuid.New().String())
-
-		video := models.Video{
-			UserID:      uint(userID),
-			Title:       title,
-			Description: description,
-			ViewCount:   uint(rand.Intn(100)), // 視聴回数をランダムに生成
-			Rating:      0.00,                 // 評価は0
-			Genre:       genre,
-			PostedAt:    time.Now(),
-			Created:     time.Now(),
-			Modified:    time.Now(),
-		}
-
-		if err := db.Create(&video).Error; err != nil {
-			log.Printf("Failed to create video: %v", err)
-			continue
-		}
-
-		// 動画ファイル情報をデータベースに保存
-		videoFile := models.VideoFile{
-			VideoID:  video.ID,
-			FilePath: fileURL, // MinIO上の動画のURL
-			Format:   "mp4",
-			Status:   "pending",
-			Created:  time.Now(),
-			Modified: time.Now(),
-		}
-
-		if err := db.Create(&videoFile).Error; err != nil {
-			log.Printf("Failed to create video file: %v", err)
+// サンプル動画を生成する関数
+func generateSampleVideo(outputPath string) error {
+	// 出力ディレクトリが存在しない場合は作成
+	outputDir := filepath.Dir(outputPath)
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
 		}
 	}
-}
 
-// 仮に動画ファイルを生成するための関数
-func createMultipartFile(filePath string) (multipart.File, *multipart.FileHeader) {
-	file, _ := os.Open(filePath)
-	fileHeader := &multipart.FileHeader{
-		Filename: filepath.Base(filePath),
-		Size:     getFileSize(filePath),
+	// ffmpeg コマンドを使用して動画を生成（テキスト描画は省略）
+	cmd := exec.Command("ffmpeg", "-f", "lavfi", "-i", fmt.Sprintf("color=c=%s:s=1280x720:d=5", randomColor()),
+		"-loglevel", "quiet",
+		"-c:v", "libx264", "-t", "5", "-pix_fmt", "yuv420p", outputPath)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// コマンドを実行
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to generate video: %w", err)
 	}
-	return file, fileHeader
+	return nil
 }
 
 // ファイルサイズを取得する関数
@@ -83,4 +54,122 @@ func getFileSize(filePath string) int64 {
 		return 0
 	}
 	return fileInfo.Size()
+}
+
+// ファイルをmultipart.Fileとして読み込む関数
+func createMultipartFile(filePath string) (multipart.File, *multipart.FileHeader, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fileHeader := &multipart.FileHeader{
+		Filename: filepath.Base(filePath),
+		Size:     getFileSize(filePath),
+		Header:   make(map[string][]string),
+	}
+	fileHeader.Header.Set("Content-Type", "video/mp4")
+
+	return file, fileHeader, nil
+}
+
+// ランダムなユーザーをデータベースから取得する関数
+func getRandomUser(db *gorm.DB) (*models.User, error) {
+	var user models.User
+	if err := db.Order("RAND()").Limit(1).Find(&user).Error; err != nil {
+		return nil, fmt.Errorf("failed to get random user: %w", err)
+	}
+	return &user, nil
+}
+
+// シーダー関数の例
+func SeedVideos(db *gorm.DB) {
+	for i := 1; i <= 100; i++ {
+		// データベースからランダムにユーザーを取得
+		user, err := getRandomUser(db)
+		if err != nil {
+			fmt.Printf("Failed to get random user: %v\n", err)
+			continue
+		}
+
+		genre := genres[rand.Intn(len(genres))]
+		title := fmt.Sprintf("%s映画%d", genre, i)
+		description := fmt.Sprintf("%s映画の説明%d", genre, i)
+
+		// サンプル動画ファイルを生成
+		videoFilePath := fmt.Sprintf("movies/%s.mp4", uuid.New().String())
+		err = generateSampleVideo(videoFilePath)
+		if err != nil {
+			fmt.Printf("Failed to generate video: %v\n", err)
+			continue
+		}
+
+		// 動画ファイルを multipart.File として読み込む
+		file, fileHeader, err := createMultipartFile(videoFilePath)
+		if err != nil {
+			fmt.Printf("Failed to create multipart file: %v\n", err)
+			continue
+		}
+		defer file.Close()
+
+		// 動画ファイルのアップロード
+		fileURL, err := services.UploadVideoFile(user.ID, title, description, file, fileHeader, "300")
+		if err != nil {
+			fmt.Printf("Failed to upload video: %v\n", err)
+			continue
+		}
+
+		// 動画ファイル情報をデータベースに保存
+		video := videomodels.Video{
+			UserID:      user.ID, // ランダムに取得されたユーザーのIDを使用
+			Title:       title,
+			Description: description,
+			ViewCount:   uint(i),
+			Rating:      0.00,
+			Genre:       genre,
+			PostedAt:    time.Now(),
+			Created:     time.Now(),
+			Modified:    time.Now(),
+		}
+
+		if err := db.Create(&video).Error; err != nil {
+			fmt.Printf("Failed to create video: %v\n", err)
+			continue
+		}
+
+		// videoFileデータを保存
+		videoFile := videomodels.VideoFile{
+			VideoID:  video.ID,
+			FilePath: fileURL,
+			Format:   "mp4",
+			Status:   "pending",
+			Created:  time.Now(),
+			Modified: time.Now(),
+		}
+
+		if err := db.Create(&videoFile).Error; err != nil {
+			fmt.Printf("Failed to create video file: %v\n", err)
+		}
+	}
+	// moviesディレクトリを削除
+	err := clearMoviesDirectory("movies")
+	if err != nil {
+		fmt.Printf("Failed to clear movies directory: %v\n", err)
+	} else {
+		// fmt.Println("Successfully cleared movies directory")
+	}
+}
+
+// movies ディレクトリを削除する関数
+func clearMoviesDirectory(dirPath string) error {
+	err := os.RemoveAll(dirPath)
+	if err != nil {
+		return fmt.Errorf("Failed to remove movies directory: %v", err)
+	}
+	return nil
+}
+
+func randomColor() string {
+	colors := []string{"red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"}
+	return colors[rand.Intn(len(colors))]
 }

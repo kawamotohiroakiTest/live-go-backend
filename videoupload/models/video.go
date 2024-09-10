@@ -8,27 +8,32 @@ import (
 )
 
 type Video struct {
-	ID          uint       `gorm:"primary_key"`
-	UserID      uint       `gorm:"not null"`
-	Title       string     `gorm:"type:varchar(255);not null"`
-	Description string     `gorm:"type:text"`
-	Created     time.Time  `gorm:"default:CURRENT_TIMESTAMP"`
-	Modified    time.Time  `gorm:"default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
-	Deleted     *time.Time `gorm:"default:NULL"`
+	ID          uint        `gorm:"primary_key"`
+	UserID      uint        `gorm:"not null"`                                              // 外部キー usersテーブルのID
+	Title       string      `gorm:"type:varchar(255);not null"`                            // 動画のタイトル
+	Description string      `gorm:"type:text"`                                             // 説明
+	ViewCount   uint        `gorm:"default:0;not null"`                                    // 視聴回数
+	Rating      float64     `gorm:"type:decimal(3,2);default:0.00"`                        // 評価
+	Genre       string      `gorm:"type:varchar(255);not null"`                            // ジャンル
+	PostedAt    time.Time   `gorm:"default:CURRENT_TIMESTAMP;not null"`                    // 投稿日時
+	Created     time.Time   `gorm:"default:CURRENT_TIMESTAMP"`                             // 作成日時
+	Modified    time.Time   `gorm:"default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"` // 更新日時
+	Deleted     *time.Time  `gorm:"default:NULL"`                                          // 削除日時
+	Files       []VideoFile `gorm:"foreignKey:VideoID"`                                    // 動画ファイルとのリレーション
 }
 
 type VideoFile struct {
-	ID            uint       `gorm:"primary_key"`
-	VideoID       uint       `gorm:"not null"`
-	FilePath      string     `gorm:"type:varchar(255);not null"`
-	ThumbnailPath string     `gorm:"type:varchar(255)"`
-	Duration      uint       `gorm:"type:int"`
-	FileSize      uint64     `gorm:"type:bigint"`
-	Format        string     `gorm:"type:varchar(50);not null"`
-	Status        string     `gorm:"type:enum('pending','processing','completed','failed');default:'pending'"`
-	Created       time.Time  `gorm:"default:CURRENT_TIMESTAMP"`
-	Modified      time.Time  `gorm:"default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
-	Deleted       *time.Time `gorm:"default:NULL"`
+	ID            uint       `gorm:"primary_key"`                                                                       // ファイルのID
+	VideoID       uint       `gorm:"not null"`                                                                          // 外部キー、videosテーブルのID
+	FilePath      string     `gorm:"type:varchar(255);not null"`                                                        // 動画ファイルパス
+	ThumbnailPath string     `gorm:"type:varchar(255)"`                                                                 // サムネイルパス
+	Duration      uint       `gorm:"not null"`                                                                          // 動画の再生時間 (秒単位)
+	FileSize      uint64     `gorm:"not null"`                                                                          // ファイルサイズ (バイト単位)
+	Format        string     `gorm:"type:varchar(50);not null"`                                                         // ファイル形式 (例: mp4)
+	Status        string     `gorm:"type:enum('pending','processing','completed','failed');default:'pending';not null"` // ステータス
+	Created       time.Time  `gorm:"default:CURRENT_TIMESTAMP"`                                                         // 作成日時
+	Modified      time.Time  `gorm:"default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`                             // 更新日時
+	Deleted       *time.Time `gorm:"default:NULL"`                                                                      // 削除日時
 }
 
 func SaveVideo(userID uint, title, description string) (*Video, error) {
