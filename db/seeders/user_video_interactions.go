@@ -34,12 +34,14 @@ func SeedUserVideoInteractions(db *gorm.DB) {
 	// CSVファイル用のデータを保持するスライス
 	var records [][]string
 
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 1000; i++ {
 		// ランダムなユーザーとビデオを選択
 		user := users[rand.Intn(len(users))]
 		video := videos[rand.Intn(len(videos))]
 		eventType := eventTypes[rand.Intn(len(eventTypes))]
+		timestamp := time.Now().Unix()
 
+		// `UserVideoInteraction`を生成
 		interaction := videomodels.UserVideoInteraction{
 			UserID:    user.ID,
 			VideoID:   video.ID,
@@ -47,25 +49,26 @@ func SeedUserVideoInteractions(db *gorm.DB) {
 			CreatedAt: time.Now(),
 		}
 
+		// データベースにインタラクションを保存
 		if err := db.Create(&interaction).Error; err != nil {
 			log.Printf("Failed to create user video interaction: %v", err)
 		} else {
-			fmt.Printf("Created user video interaction: UserID=%d, VideoID=%d, EventType=%s\n", user.ID, video.ID, eventType)
+			fmt.Printf("Created user video interaction: USER_ID=%d, ITEM_ID=%d, EVENT_TYPE=%s\n", user.ID, video.ID, eventType)
 
 			// CSVに書き出すレコードを追加
 			record := []string{
-				fmt.Sprint(interaction.ID),
-				fmt.Sprint(interaction.UserID),
-				fmt.Sprint(interaction.VideoID),
-				interaction.EventType,
-				interaction.CreatedAt.String(),
+				fmt.Sprint(interaction.UserID),  // USER_ID
+				fmt.Sprint(interaction.VideoID), // ITEM_ID
+				interaction.EventType,           // EVENT_TYPE
+				fmt.Sprint(0.0),                 // EVENT_VALUE: optional なので空の値を設定
+				fmt.Sprint(timestamp),           // TIMESTAMP: UNIXタイム形式
 			}
 			records = append(records, record)
 		}
 	}
 
 	// CSVファイルにエクスポート
-	headers := []string{"id", "user_id", "video_id", "event_type", "created_at"}
+	headers := []string{"USER_ID", "ITEM_ID", "EVENT_TYPE", "EVENT_VALUE", "TIMESTAMP"}
 	err := createUserVideoInteractionsCSV("db/learningdata/user_video_interactions.csv", headers, records)
 	if err != nil {
 		fmt.Printf("Failed to export user video interactions to CSV: %v\n", err)
@@ -91,11 +94,13 @@ func createUserVideoInteractionsCSV(filePath string, headers []string, records [
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
+	// ヘッダーを書き込む
 	err = writer.Write(headers)
 	if err != nil {
 		return fmt.Errorf("failed to write CSV header: %v", err)
 	}
 
+	// レコードを書き込む
 	for _, record := range records {
 		err := writer.Write(record)
 		if err != nil {

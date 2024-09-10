@@ -157,12 +157,11 @@ func SeedVideos(db *gorm.DB) {
 
 		// CSV用のレコードを作成
 		record := []string{
-			fmt.Sprint(video.ID),
-			fmt.Sprint(video.UserID),
-			video.Title,
-			video.Genre,
-			fmt.Sprint(video.ViewCount),
-			video.Created.String(),
+			fmt.Sprint(video.ID),              // ITEM_ID
+			video.Genre,                       // GENRES
+			fmt.Sprint(video.Created.Unix()),  // CREATION_TIMESTAMP (UNIXタイムスタンプ)
+			fmt.Sprint(video.ViewCount),       // VIEW_COUNT
+			fmt.Sprintf("%.2f", video.Rating), // RATING
 		}
 		records = append(records, record)
 	}
@@ -171,12 +170,10 @@ func SeedVideos(db *gorm.DB) {
 	err := clearMoviesDirectory("movies")
 	if err != nil {
 		fmt.Printf("Failed to clear movies directory: %v\n", err)
-	} else {
-		// fmt.Println("Successfully cleared movies directory")
 	}
 
 	// CSVファイルの作成
-	headers := []string{"id", "user_id", "title", "genre", "view_count", "created"}
+	headers := []string{"ITEM_ID", "GENRES", "CREATION_TIMESTAMP", "VIEW_COUNT", "RATING"}
 	err = createVideosCSV("db/learningdata/videos.csv", headers, records)
 	if err != nil {
 		fmt.Printf("Failed to create videos CSV: %v\n", err)

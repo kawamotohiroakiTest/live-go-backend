@@ -76,24 +76,21 @@ func SeedUsers(db *gorm.DB) {
 		// CSVファイル用にレコードを追加
 		record := []string{
 			fmt.Sprint(user.ID),
-			user.Name,
-			user.Mail,
-			user.CreatedAt.String(),
-			user.LastLoginAt.String(),
+			fmt.Sprint(user.LastLoginAt.Unix()), // タイムスタンプ形式で出力
 		}
 		records = append(records, record)
+	}
 
-		// CSVにエクスポート
-		headers := []string{"id", "name", "mail", "created_at", "last_login_at"}
-		err := createUserCSV("db/learningdata/users.csv", headers, records)
-		if err != nil {
-			fmt.Printf("Failed to export users to CSV: %v\n", err)
-		}
+	// CSVにエクスポート
+	headers := []string{"USER_ID", "LAST_LOGIN"}
+	err := createUsersCSV("db/learningdata/users.csv", headers, records)
+	if err != nil {
+		fmt.Printf("Failed to export users to CSV: %v\n", err)
 	}
 }
 
 // CSVファイル作成関数
-func createUserCSV(filePath string, headers []string, records [][]string) error {
+func createUsersCSV(filePath string, headers []string, records [][]string) error {
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, os.ModePerm)
