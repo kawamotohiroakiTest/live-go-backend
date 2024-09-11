@@ -235,7 +235,7 @@ func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *mu
 }
 
 // seeder用のメソッド
-func UploadVideoFile(userID uint, title, description string, file multipart.File, fileHeader *multipart.FileHeader, durationStr string) (string, error) {
+func UploadVideoFile(userID uint, title, description string, genre string, file multipart.File, fileHeader *multipart.FileHeader, durationStr string) (string, error) {
 	// DBトランザクションの開始
 	tx := common.DB.Begin()
 	if tx.Error != nil {
@@ -243,7 +243,7 @@ func UploadVideoFile(userID uint, title, description string, file multipart.File
 	}
 
 	// 動画情報の保存
-	video, err := models.SaveVideoWithTransaction(tx, userID, title, description)
+	video, err := models.SaveVideoWithTransaction(tx, userID, title, description, genre)
 	if err != nil {
 		tx.Rollback()
 		return "", err

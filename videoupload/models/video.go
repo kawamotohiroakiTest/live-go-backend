@@ -36,11 +36,12 @@ type VideoFile struct {
 	Deleted       *time.Time `gorm:"default:NULL"`                                                                      // 削除日時
 }
 
-func SaveVideo(userID uint, title, description string) (*Video, error) {
+func SaveVideo(userID uint, title, description string, genre string) (*Video, error) {
 	video := Video{
 		UserID:      userID,
 		Title:       title,
 		Description: description,
+		Genre:       genre,
 	}
 
 	if err := common.DB.Create(&video).Error; err != nil {
@@ -68,11 +69,12 @@ func SaveVideoFile(videoID uint, filePath, thumbnailPath string, duration uint, 
 }
 
 // トランザクションを使用して動画情報を保存する関数
-func SaveVideoWithTransaction(tx *gorm.DB, userID uint, title, description string) (*Video, error) {
+func SaveVideoWithTransaction(tx *gorm.DB, userID uint, title, description string, genre string) (*Video, error) {
 	video := Video{
 		UserID:      userID,
 		Title:       title,
 		Description: description,
+		Genre:       genre,
 	}
 
 	if err := tx.Create(&video).Error; err != nil {

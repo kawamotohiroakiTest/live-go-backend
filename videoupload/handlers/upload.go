@@ -38,8 +38,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	// 動画情報の保存
 	title := r.FormValue("title")
 	description := r.FormValue("description")
+	genre := r.FormValue("genre")
 
-	video, err := models.SaveVideoWithTransaction(tx, userID, title, description)
+	video, err := models.SaveVideoWithTransaction(tx, userID, title, description, genre)
 	if err != nil {
 		common.LogVideoUploadError(err)
 		tx.Rollback()
