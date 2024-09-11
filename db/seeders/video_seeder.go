@@ -85,9 +85,11 @@ func getRandomUser(db *gorm.DB) (*models.User, error) {
 
 // シーダー関数の例
 func SeedVideos(db *gorm.DB) {
-	var records [][]string // CSV用のレコード
+	var videos []videomodels.Video
+	var records [][]string // CSV用のデータを保持
 
-	for i := 1; i <= 100; i++ {
+	// まず videos テーブルに動画情報を保存する
+	for i := 1; i <= 150; i++ {
 		// データベースからランダムにユーザーを取得
 		user, err := getRandomUser(db)
 		if err != nil {
@@ -95,13 +97,52 @@ func SeedVideos(db *gorm.DB) {
 			continue
 		}
 
-		genre := genres[rand.Intn(len(genres))]
+		cards := []string{"アクション", "コメディ", "ドキュメンタリー", "ドラマ", "ホラー", "SF", "アニメ", "音楽", "スポーツ", "ニュース"}
+		rand.Seed(time.Now().UnixNano())
+
+		genre := genres[rand.Intn(len(cards))]
+		fmt.Println(genre)
+		time.Sleep(100 * time.Millisecond)
 		title := fmt.Sprintf("%s映画%d", genre, i)
 		description := fmt.Sprintf("%s映画の説明%d", genre, i)
 
+		// 動画情報をまずデータベースに保存
+		video := videomodels.Video{
+			UserID:      user.ID,
+			Title:       title,
+			Description: description,
+			ViewCount:   uint(i),
+			Rating:      rand.Float64() * 5,
+			Genre:       genre,
+			PostedAt:    time.Now(),
+			Created:     time.Now(),
+			Modified:    time.Now(),
+		}
+
+		if err := db.Create(&video).Error; err != nil {
+			fmt.Printf("Failed to create video: %v\n", err)
+			continue
+		}
+
+		// 保存された動画をスライスに追加
+		videos = append(videos, video)
+
+		// CSV用のレコードを作成
+		record := []string{
+			fmt.Sprint(video.ID),              // ITEM_ID
+			video.Genre,                       // ジャンル
+			fmt.Sprint(video.Created.Unix()),  // CREATION_TIMESTAMP (UNIXタイムスタンプ)
+			fmt.Sprint(video.ViewCount),       // VIEW_COUNT
+			fmt.Sprintf("%.2f", video.Rating), // RATING
+		}
+		records = append(records, record)
+	}
+
+	// 全ての動画情報が videos テーブルに保存された後、動画ファイルの生成とアップロードを開始
+	for _, video := range videos {
 		// サンプル動画ファイルを生成
 		videoFilePath := fmt.Sprintf("movies/%s.mp4", uuid.New().String())
-		err = generateSampleVideo(videoFilePath)
+		err := generateSampleVideo(videoFilePath)
 		if err != nil {
 			fmt.Printf("Failed to generate video: %v\n", err)
 			continue
@@ -116,27 +157,9 @@ func SeedVideos(db *gorm.DB) {
 		defer file.Close()
 
 		// 動画ファイルのアップロード
-		fileURL, err := services.UploadVideoFile(user.ID, title, description, file, fileHeader, "300")
+		fileURL, err := services.UploadVideoFile(video.UserID, video.Title, video.Description, file, fileHeader, "300")
 		if err != nil {
 			fmt.Printf("Failed to upload video: %v\n", err)
-			continue
-		}
-
-		// 動画ファイル情報をデータベースに保存
-		video := videomodels.Video{
-			UserID:      user.ID, // ランダムに取得されたユーザーのIDを使用
-			Title:       title,
-			Description: description,
-			ViewCount:   uint(i),
-			Rating:      0.00,
-			Genre:       genre,
-			PostedAt:    time.Now(),
-			Created:     time.Now(),
-			Modified:    time.Now(),
-		}
-
-		if err := db.Create(&video).Error; err != nil {
-			fmt.Printf("Failed to create video: %v\n", err)
 			continue
 		}
 
@@ -152,29 +175,12 @@ func SeedVideos(db *gorm.DB) {
 
 		if err := db.Create(&videoFile).Error; err != nil {
 			fmt.Printf("Failed to create video file: %v\n", err)
-			continue
 		}
-
-		// CSV用のレコードを作成
-		record := []string{
-			fmt.Sprint(video.ID),              // ITEM_ID
-			video.Genre,                       // GENRES
-			fmt.Sprint(video.Created.Unix()),  // CREATION_TIMESTAMP (UNIXタイムスタンプ)
-			fmt.Sprint(video.ViewCount),       // VIEW_COUNT
-			fmt.Sprintf("%.2f", video.Rating), // RATING
-		}
-		records = append(records, record)
-	}
-
-	// moviesディレクトリを削除
-	err := clearMoviesDirectory("movies")
-	if err != nil {
-		fmt.Printf("Failed to clear movies directory: %v\n", err)
 	}
 
 	// CSVファイルの作成
 	headers := []string{"ITEM_ID", "GENRES", "CREATION_TIMESTAMP", "VIEW_COUNT", "RATING"}
-	err = createVideosCSV("db/learningdata/videos.csv", headers, records)
+	err := createVideosCSV("db/learningdata/videos.csv", headers, records)
 	if err != nil {
 		fmt.Printf("Failed to create videos CSV: %v\n", err)
 	}
@@ -226,4 +232,13 @@ func createVideosCSV(filePath string, headers []string, records [][]string) erro
 func randomColor() string {
 	colors := []string{"red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"}
 	return colors[rand.Intn(len(colors))]
+}
+
+// ジャンルを取得する関数
+func getRandomGenre() (string, error) {
+	if len(genres) == 0 {
+		return "", fmt.Errorf("genre list is empty")
+	}
+	genre := genres[rand.Intn(len(genres))]
+	return genre, nil
 }

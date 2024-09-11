@@ -34,19 +34,22 @@ func SeedUserVideoInteractions(db *gorm.DB) {
 	// CSVファイル用のデータを保持するスライス
 	var records [][]string
 
-	for i := 1; i <= 1000; i++ {
+	for i := 1; i <= 2000; i++ {
 		// ランダムなユーザーとビデオを選択
 		user := users[rand.Intn(len(users))]
 		video := videos[rand.Intn(len(videos))]
 		eventType := eventTypes[rand.Intn(len(eventTypes))]
 		timestamp := time.Now().Unix()
 
+		eventValue := rand.Float64() * 10 // 0.0 から 10.0 の範囲でランダムな値
+
 		// `UserVideoInteraction`を生成
 		interaction := videomodels.UserVideoInteraction{
-			UserID:    user.ID,
-			VideoID:   video.ID,
-			EventType: eventType,
-			CreatedAt: time.Now(),
+			UserID:     user.ID,
+			VideoID:    video.ID,
+			EventType:  eventType,
+			EventValue: eventValue,
+			CreatedAt:  time.Now(),
 		}
 
 		// データベースにインタラクションを保存
@@ -60,7 +63,7 @@ func SeedUserVideoInteractions(db *gorm.DB) {
 				fmt.Sprint(interaction.UserID),  // USER_ID
 				fmt.Sprint(interaction.VideoID), // ITEM_ID
 				interaction.EventType,           // EVENT_TYPE
-				fmt.Sprint(0.0),                 // EVENT_VALUE: optional なので空の値を設定
+				fmt.Sprintf("%.2f", eventValue), // ランダムな EVENT_VALUE
 				fmt.Sprint(timestamp),           // TIMESTAMP: UNIXタイム形式
 			}
 			records = append(records, record)

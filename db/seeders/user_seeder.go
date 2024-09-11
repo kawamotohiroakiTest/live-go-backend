@@ -42,7 +42,7 @@ func SeedUsers(db *gorm.DB) {
 	var records [][]string
 
 	// 100件のユーザーを作成
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 150; i++ {
 		// メールアドレスと名前を作成
 		mail := fmt.Sprintf("test%d@gmail.com", i)
 		name := names[rand.Intn(len(names))]

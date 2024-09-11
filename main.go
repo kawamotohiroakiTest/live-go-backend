@@ -50,7 +50,7 @@ func main() {
 
 	seeders.SeedUsers(dbConn)
 	seeders.SeedVideos(dbConn)
-	seeders.SeedUserVideoInteractions(dbConn)
+	// seeders.SeedUserVideoInteractions(dbConn)
 
 	r := mux.NewRouter()
 
