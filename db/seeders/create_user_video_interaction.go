@@ -3,9 +3,10 @@ package seeders
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -64,17 +65,24 @@ type UserVideoInteraction struct {
 
 // 120人分のユーザーデータを生成
 func SeedUsers(db *gorm.DB) error {
+
 	for i := 1; i <= 120; i++ {
 		name := names[rand.Intn(len(names))]
 		mail := fmt.Sprintf("test%d@gmail.com", i)
 
 		lastLoginAt := time.Now().Add(-time.Duration(rand.Intn(365*24)) * time.Hour)
 
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("testtest"), bcrypt.DefaultCost)
+		if err != nil {
+			fmt.Printf("Error generating bcrypt hash: %v", err)
+			return err
+		}
+
 		// ユーザーデータを作成
 		user := User{
 			Name:        name,
 			Mail:        mail,
-			Pass:        "testtest",
+			Pass:        string(hashedPassword),
 			LastLoginAt: lastLoginAt,
 			CreatedAt:   time.Now(),
 			ModifiedAt:  time.Now(),
@@ -92,11 +100,13 @@ func SeedUsers(db *gorm.DB) error {
 
 // 動画とそのファイルを120件生成
 func SeedVideos(db *gorm.DB) error {
+	genreCount := len(genres)
+
 	for i := 1; i <= 120; i++ {
 		var userID uint
 		db.Raw("SELECT id FROM users ORDER BY RAND() LIMIT 1").Scan(&userID)
 
-		genre := genres[rand.Intn(len(genres))]
+		genre := genres[(i-1)%genreCount]
 
 		title := fmt.Sprintf("%sタイトル%d", genre, i)
 		description := fmt.Sprintf("%s説明%d", genre, i)
@@ -123,7 +133,7 @@ func SeedVideos(db *gorm.DB) error {
 		}
 
 		// video_files テーブルに対応するレコードを生成
-		filePath := fmt.Sprintf("movies/sample_%s_%s.mp4", uuid.New().String(), generateRandomString(8))
+		filePath := fmt.Sprintf("movies/sample_%d_%s.mp4", i, strings.ToLower(genre))
 		videoFile := VideoFile{
 			VideoID:  video.ID,
 			FilePath: filePath,
