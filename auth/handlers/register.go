@@ -52,7 +52,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := models.User{Name: creds.Name, Mail: creds.Mail, Pass: string(hashedPassword)}
+	user := models.User{Name: creds.Name, Mail: creds.Mail, Pass: string(hashedPassword), LastLoginAt: time.Now()}
 
 	if err := tx.Create(&user).Error; err != nil {
 		common.LogUser(common.ERROR, err.Error())

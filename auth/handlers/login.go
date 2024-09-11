@@ -52,6 +52,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ログイン成功時にlast_login_atを更新
+	if err := common.DB.Model(&user).Update("last_login_at", time.Now()).Error; err != nil {
+		common.LogUser(common.ERROR, "Failed to update last_login_at for user: "+creds.Mail)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	// JWTトークンの作成
 	expirationTime := time.Now().Add(7 * 24 * time.Hour)
 	claims := &common.Claims{
