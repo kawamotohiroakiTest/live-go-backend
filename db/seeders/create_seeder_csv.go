@@ -3,109 +3,144 @@ package seeders
 import (
 	"encoding/csv"
 	"fmt"
-	"live/auth/models"
-	videomodels "live/videohub/models"
+	"live/common"
+	"log"
 	"os"
 	"path/filepath"
 
 	"gorm.io/gorm"
 )
 
-// Export users table to CSV
-func ExportUsersToCSV(db *gorm.DB) error {
-	var users []models.User
-	if err := db.Find(&users).Error; err != nil {
-		return fmt.Errorf("failed to fetch users: %v", err)
-	}
-
-	var records [][]string
-	for _, user := range users {
-		record := []string{
-			fmt.Sprint(user.ID),       // USER_ID
-			user.LastLoginAt.String(), // LAST_LOGIN
-		}
-		records = append(records, record)
-	}
-
-	headers := []string{"USER_ID", "LAST_LOGIN"}
-	return createCSV("db/learningdata/users.csv", headers, records)
-}
-
-// Export videos table to CSV
-func ExportVideosToCSV(db *gorm.DB) error {
-	var videos []videomodels.Video
-	if err := db.Find(&videos).Error; err != nil {
-		return fmt.Errorf("failed to fetch videos: %v", err)
-	}
-
-	var records [][]string
-	for _, video := range videos {
-		record := []string{
-			fmt.Sprint(video.ID),              // ITEM_ID
-			video.Genre,                       // GENRES
-			fmt.Sprint(video.Created.Unix()),  // CREATION_TIMESTAMP (UNIX timestamp)
-			fmt.Sprint(video.ViewCount),       // VIEW_COUNT
-			fmt.Sprintf("%.2f", video.Rating), // RATING
-		}
-		records = append(records, record)
-	}
-
-	headers := []string{"ITEM_ID", "GENRES", "CREATION_TIMESTAMP", "VIEW_COUNT", "RATING"}
-	return createCSV("db/learningdata/videos.csv", headers, records)
-}
-
-// Export user_video_interactions table to CSV
-func ExportUserVideoInteractionsToCSV(db *gorm.DB) error {
-	var interactions []videomodels.UserVideoInteraction
-	if err := db.Find(&interactions).Error; err != nil {
-		return fmt.Errorf("failed to fetch user video interactions: %v", err)
-	}
-
-	var records [][]string
-	for _, interaction := range interactions {
-		record := []string{
-			fmt.Sprint(interaction.UserID),           // USER_ID
-			fmt.Sprint(interaction.VideoID),          // ITEM_ID
-			interaction.EventType,                    // EVENT_TYPE
-			fmt.Sprint(interaction.EventValue),       // EVENT_VALUE
-			fmt.Sprint(interaction.CreatedAt.Unix()), // TIMESTAMP (UNIX timestamp)
-		}
-		records = append(records, record)
-	}
-
-	headers := []string{"USER_ID", "ITEM_ID", "EVENT_TYPE", "EVENT_VALUE", "TIMESTAMP"}
-	return createCSV("db/learningdata/user_video_interactions.csv", headers, records)
-}
-
-// Helper function to create CSV file
-func createCSV(filePath string, headers []string, records [][]string) error {
-	dir := filepath.Dir(filePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return fmt.Errorf("failed to create directory: %v", err)
-		}
-	}
-
-	file, err := os.Create(filePath)
+// CSVファイルに書き込む関数
+func writeCSV(filename string, headers []string, rows [][]string) error {
+	// 現在の作業ディレクトリを取得
+	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
+		return fmt.Errorf("現在のディレクトリの取得に失敗しました: %v", err)
+	}
+
+	// 相対パスを基にCSVのパスを作成
+	relativePath := filepath.Join(cwd, "db/csv", filename)
+
+	// ディレクトリが存在しない場合は作成
+	dir := filepath.Dir(relativePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("ディレクトリ作成に失敗しました: %v", err)
+		}
+	}
+
+	// CSVファイルの作成
+	file, err := os.Create(relativePath)
+	if err != nil {
+		return fmt.Errorf("ファイル作成に失敗しました: %v", err)
 	}
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	// Write headers
+	// ヘッダーを書き込む
 	if err := writer.Write(headers); err != nil {
-		return fmt.Errorf("failed to write CSV headers: %v", err)
+		return fmt.Errorf("ヘッダー書き込みに失敗しました: %v", err)
 	}
 
-	// Write records
-	for _, record := range records {
-		if err := writer.Write(record); err != nil {
-			return fmt.Errorf("failed to write record: %v", err)
+	// 各レコードを書き込む
+	for _, row := range rows {
+		if err := writer.Write(row); err != nil {
+			return fmt.Errorf("レコード書き込みに失敗しました: %v", err)
 		}
 	}
 
 	return nil
+}
+
+// ユーザーデータを取得し、CSVに書き込む
+func exportUsersToCSV(db *gorm.DB) error {
+	var users []User
+	if err := db.Find(&users).Error; err != nil {
+		return err
+	}
+
+	// CSV形式のデータに変換
+	var records [][]string
+	for _, user := range users {
+		record := []string{
+			fmt.Sprintf("user_%d", user.ID),
+			fmt.Sprintf("%d", user.LastLoginAt.Unix()),
+		}
+		records = append(records, record)
+	}
+
+	// CSV書き込み
+	headers := []string{"USER_ID", "LAST_LOGIN"}
+	return writeCSV("../csv/users.csv", headers, records)
+}
+
+// 動画データを取得し、CSVに書き込む
+func exportVideosToCSV(db *gorm.DB) error {
+	var videos []Video
+	if err := db.Find(&videos).Error; err != nil {
+		return err
+	}
+
+	// CSV形式のデータに変換
+	var records [][]string
+	for _, video := range videos {
+		record := []string{
+			fmt.Sprintf("video_%d", video.ID),
+			video.Title,
+			video.Genre,
+			fmt.Sprintf("%d", video.Created.Unix()),
+		}
+		records = append(records, record)
+	}
+
+	// CSV書き込み
+	headers := []string{"ITEM_ID", "TITLE", "GENRES", "CREATION_TIMESTAMP"}
+	return writeCSV("../csv/videos.csv", headers, records)
+}
+
+// ユーザーと動画のインタラクションデータを取得し、CSVに書き込む
+func exportInteractionsToCSV(db *gorm.DB) error {
+	var interactions []UserVideoInteraction
+	if err := db.Find(&interactions).Error; err != nil {
+		return err
+	}
+
+	// CSV形式のデータに変換
+	var records [][]string
+	for _, interaction := range interactions {
+		record := []string{
+			fmt.Sprintf("user_%d", interaction.UserID),
+			fmt.Sprintf("video_%d", interaction.VideoID),
+			interaction.EventType,
+			fmt.Sprintf("%d", interaction.CreatedAt.Unix()),
+		}
+		records = append(records, record)
+	}
+
+	// CSV書き込み
+	headers := []string{"USER_ID", "ITEM_ID", "EVENT_TYPE", "TIMESTAMP"}
+	return writeCSV("../csv/interactions.csv", headers, records)
+}
+
+func CreateCSV() {
+	// データベース初期化
+	dbConn, err := common.InitDB()
+	if err != nil {
+		log.Fatalf("Error initializing the database: %v", err)
+	}
+
+	// 各データをCSVにエクスポート
+	if err := exportUsersToCSV(dbConn); err != nil {
+		fmt.Printf("ユーザーエクスポート失敗: %v\n", err)
+	}
+	if err := exportVideosToCSV(dbConn); err != nil {
+		fmt.Printf("動画エクスポート失敗: %v\n", err)
+	}
+	if err := exportInteractionsToCSV(dbConn); err != nil {
+		fmt.Printf("インタラクションエクスポート失敗: %v\n", err)
+	}
 }

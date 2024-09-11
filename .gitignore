@@ -3,3 +3,4 @@
 /logs
 db/learningdata/*
 .DS_Store
+db/csv/*

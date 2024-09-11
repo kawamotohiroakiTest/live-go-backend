@@ -48,20 +48,8 @@ func main() {
 	common.LogTodo(common.INFO, "Running database migrations...")
 	db.RunMigration()
 
-	seeders.SeedUsers(dbConn)
-	seeders.SeedVideos(dbConn)
-	seeders.SeedUserVideoInteractions(dbConn)
-	if err := seeders.ExportUsersToCSV(dbConn); err != nil {
-		fmt.Println("Failed to export users:", err)
-	}
-
-	if err := seeders.ExportVideosToCSV(dbConn); err != nil {
-		fmt.Println("Failed to export videos:", err)
-	}
-
-	if err := seeders.ExportUserVideoInteractionsToCSV(dbConn); err != nil {
-		fmt.Println("Failed to export user video interactions:", err)
-	}
+	seeders.SeedAll(dbConn)
+	seeders.CreateCSV()
 
 	r := mux.NewRouter()
 
