@@ -50,7 +50,18 @@ func main() {
 
 	seeders.SeedUsers(dbConn)
 	seeders.SeedVideos(dbConn)
-	// seeders.SeedUserVideoInteractions(dbConn)
+	seeders.SeedUserVideoInteractions(dbConn)
+	if err := seeders.ExportUsersToCSV(dbConn); err != nil {
+		fmt.Println("Failed to export users:", err)
+	}
+
+	if err := seeders.ExportVideosToCSV(dbConn); err != nil {
+		fmt.Println("Failed to export videos:", err)
+	}
+
+	if err := seeders.ExportUserVideoInteractionsToCSV(dbConn); err != nil {
+		fmt.Println("Failed to export user video interactions:", err)
+	}
 
 	r := mux.NewRouter()
 

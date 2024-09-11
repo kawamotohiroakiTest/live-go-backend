@@ -102,7 +102,7 @@ func SeedVideos(db *gorm.DB) {
 
 		genre := genres[rand.Intn(len(cards))]
 		fmt.Println(genre)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		title := fmt.Sprintf("%s映画%d", genre, i)
 		description := fmt.Sprintf("%s映画の説明%d", genre, i)
 
@@ -154,6 +154,8 @@ func SeedVideos(db *gorm.DB) {
 			fmt.Printf("Failed to create multipart file: %v\n", err)
 			continue
 		}
+		time.Sleep(1000 * time.Millisecond)
+
 		defer file.Close()
 
 		// 動画ファイルのアップロード
@@ -176,14 +178,24 @@ func SeedVideos(db *gorm.DB) {
 		if err := db.Create(&videoFile).Error; err != nil {
 			fmt.Printf("Failed to create video file: %v\n", err)
 		}
+		time.Sleep(100 * time.Millisecond)
+		fmt.Println("動画アップ/保存")
+
+	}
+	fmt.Println("アップ完了")
+
+	err := DeleteZeroSizeVideoFiles(db)
+	if err != nil {
+		fmt.Printf("Failed to delete zero-size video files: %v\n", err)
 	}
 
 	// CSVファイルの作成
 	headers := []string{"ITEM_ID", "GENRES", "CREATION_TIMESTAMP", "VIEW_COUNT", "RATING"}
-	err := createVideosCSV("db/learningdata/videos.csv", headers, records)
+	err = createVideosCSV("db/learningdata/videos.csv", headers, records)
 	if err != nil {
 		fmt.Printf("Failed to create videos CSV: %v\n", err)
 	}
+	err = clearMoviesDirectory("movies")
 }
 
 // movies ディレクトリを削除する関数
@@ -241,4 +253,14 @@ func getRandomGenre() (string, error) {
 	}
 	genre := genres[rand.Intn(len(genres))]
 	return genre, nil
+}
+
+// ファイルサイズが0のデータを削除する関数
+func DeleteZeroSizeVideoFiles(db *gorm.DB) error {
+	// file_sizeが0のvideo_filesレコードを削除
+	if err := db.Where("file_size = ?", 0).Delete(&videomodels.VideoFile{}).Error; err != nil {
+		return fmt.Errorf("failed to delete zero-size video files: %v", err)
+	}
+	fmt.Println("Deleted zero-size video files")
+	return nil
 }
