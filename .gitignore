@@ -4,3 +4,4 @@
 db/learningdata/*
 .DS_Store
 db/csv/*
+db/movies/*
