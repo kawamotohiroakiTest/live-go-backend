@@ -5,9 +5,11 @@ import (
 	"context"
 	"fmt"
 	"live/common"
+	"live/videoupload/models"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -104,10 +106,17 @@ func InitMinioService() (*StorageService, error) {
 	}, nil
 }
 
-func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
-	defer file.Close() // ファイルを閉じるためのdefer
+func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader, seederFlag bool) (string, error) {
+	defer file.Close()
 
-	objectName := "movies/" + common.GenerateUniqueFileName(fileHeader.Filename)
+	var objectName string
+
+	if seederFlag {
+		objectName = "movies/" + fileHeader.Filename
+	} else {
+		// seederFlagがfalseの場合、ユニークなファイル名を生成
+		objectName = "movies/" + common.GenerateUniqueFileName(fileHeader.Filename)
+	}
 
 	validExtensions := map[string]bool{
 		".mp4":  true,
@@ -230,4 +239,61 @@ func (s *StorageService) UploadThumbnailFile(file multipart.File, fileHeader *mu
 	} else {
 		return "", fmt.Errorf("ストレージクライアントが初期化されていません。")
 	}
+}
+
+// seeder用のメソッド
+func UploadVideoFile(userID uint, title, description string, genre string, file multipart.File, fileHeader *multipart.FileHeader, durationStr string) (string, error) {
+	// DBトランザクションの開始
+	tx := common.DB.Begin()
+	if tx.Error != nil {
+		return "", tx.Error
+	}
+
+	// 動画情報の保存
+	video, err := models.SaveVideoWithTransaction(tx, userID, title, description, genre)
+	if err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
+	// ENV_MODEの取得
+	envMode := os.Getenv("ENV_MODE")
+
+	var storageService *StorageService
+
+	if envMode == "local" {
+		storageService, err = InitMinioService()
+	} else {
+		storageService, err = NewStorageService()
+	}
+
+	if err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
+	// 動画ファイルのアップロード
+	fileURL, err := storageService.UploadFile(file, fileHeader, false)
+	if err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
+	// 動画ファイル情報の保存
+	duration, _ := strconv.Atoi(durationStr)
+	fileSize := uint64(fileHeader.Size)
+	format := fileHeader.Header.Get("Content-Type")
+
+	_, err = models.SaveVideoFileWithTransaction(tx, video.ID, fileURL, uint(duration), fileSize, format)
+	if err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
+	// トランザクションのコミット
+	if err := tx.Commit().Error; err != nil {
+		return "", err
+	}
+
+	return fileURL, nil
 }

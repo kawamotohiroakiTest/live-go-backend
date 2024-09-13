@@ -3,9 +3,12 @@ package db
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"live/common"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 
@@ -49,33 +52,61 @@ func RunMigration() {
 	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s:%s)/%s", user, password, host, port, database)
 	fmt.Printf("Connecting to MySQL with DSN: %s\n", dsn)
 
-	if len(*Command) < 1 {
-		*Command = "up"
-		fmt.Println("No command provided, defaulting to 'up' migration.")
+	if *Command == "" {
+		*Command = "up" // デフォルトコマンドを設定
 	}
 
 	m, err := migrate.New(source, dsn)
 	if err != nil {
 		log.Fatalf("Failed to initialize migration: %v", err)
 	}
-
 	version, dirty, err := m.Version()
 	if err != nil && err != migrate.ErrNilVersion {
 		log.Fatalf("Failed to get current migration version: %v", err)
 	}
 
-	latestVersion := getLatestVersion()
-	if *Command == "up" && (version == latestVersion && !dirty) {
+	// getLatestVersionから2つの値を受け取る
+	latestVersion, latestFile := getLatestVersion()
+
+	if version == latestVersion && !dirty {
 		fmt.Println("No new migrations to apply.")
 		return
 	}
+	// 最新のマイグレーションファイルとそのバージョンを表示
+	fmt.Printf("Latest migration version: %d, File: %s\n", latestVersion, latestFile)
 
 	applyQuery(m, version, dirty)
 }
 
-func getLatestVersion() uint {
-	// ここで最新のマイグレーションバージョンを返すロジックを適用する
-	return 20240830085003
+func getLatestVersion() (uint, string) {
+	// db/migrationsディレクトリのファイルを読み込む
+	files, err := ioutil.ReadDir("db/migrations")
+	if err != nil {
+		log.Fatalf("Failed to read migration directory: %v", err)
+	}
+
+	var latestVersion uint
+	var latestFile string
+
+	for _, file := range files {
+		// ファイル名からバージョン番号を取得（数値部分を抽出）
+		filename := file.Name()
+		versionStr := strings.Split(filename, "_")[0]
+		version, err := strconv.ParseUint(versionStr, 10, 64)
+		if err != nil {
+			log.Printf("Skipping file %s: %v", filename, err)
+			continue
+		}
+
+		// 最も新しいバージョンを更新
+		if uint(version) > latestVersion {
+			latestVersion = uint(version)
+			latestFile = filename
+		}
+	}
+
+	// 最新のバージョン番号とファイル名を返す
+	return latestVersion, latestFile
 }
 
 // マイグレーションを実行する関数
