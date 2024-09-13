@@ -7,7 +7,6 @@ import (
 	"live/auth"
 	"live/common"
 	"live/db"
-	"live/db/seeders"
 	"live/videohub"
 	"live/videoupload"
 	"net/http"
@@ -50,7 +49,7 @@ func main() {
 
 	// seeders.SeedAll(dbConn)
 	// seeders.CreateCSV()
-	seeders.UploadAllMovies()
+	// seeders.UploadAllMovies()
 
 	r := mux.NewRouter()
 

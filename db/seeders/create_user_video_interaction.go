@@ -194,8 +194,46 @@ func generateRandomString(n int) string {
 	return string(b)
 }
 
+func DeleteTablesResetAutoIncrement(db *gorm.DB) error {
+	// 外部キー制約を一時的に無効化
+	if err := db.Exec("SET FOREIGN_KEY_CHECKS = 0").Error; err != nil {
+		return fmt.Errorf("外部キー制約を無効にできませんでした: %v", err)
+	}
+
+	// 対象テーブルのリスト
+	tables := []string{"user_video_interactions", "video_files", "videos", "users"}
+
+	for _, tableName := range tables {
+		// テーブル内のデータを削除
+		if err := db.Exec(fmt.Sprintf("DELETE FROM %s", tableName)).Error; err != nil {
+			return fmt.Errorf("テーブル %s のデータ削除に失敗しました: %v", tableName, err)
+		}
+
+		// AUTO_INCREMENTをリセット
+		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s AUTO_INCREMENT = 1", tableName)).Error; err != nil {
+			return fmt.Errorf("テーブル %s のAUTO_INCREMENTリセットに失敗しました: %v", tableName, err)
+		}
+
+		// 完了メッセージを出力
+		fmt.Printf("テーブル %s のデータ削除およびAUTO_INCREMENTリセットが完了しました\n", tableName)
+	}
+
+	// 外部キー制約を再度有効化
+	if err := db.Exec("SET FOREIGN_KEY_CHECKS = 1").Error; err != nil {
+		return fmt.Errorf("外部キー制約を再度有効にできませんでした: %v", err)
+	}
+
+	return nil
+}
+
 // メインのSeeder関数
 func SeedAll(db *gorm.DB) {
+	// テーブルのデータ削除およびAUTO_INCREMENTリセットを実行
+	if err := DeleteTablesResetAutoIncrement(db); err != nil {
+		fmt.Println("Error resetting tables:", err)
+		return
+	}
+
 	if err := SeedUsers(db); err != nil {
 		fmt.Println("Error seeding users:", err)
 	}

@@ -16,4 +16,7 @@ func RegisterRoutes(router *mux.Router, db *gorm.DB) {
 	videohubRouter.HandleFunc("/create_user_video_interactions", func(w http.ResponseWriter, r *http.Request) {
 		handlers.SaveUserVideoInteractionHandler(db, w, r)
 	}).Methods("POST")
+	videohubRouter.HandleFunc("/get_videos_by_ids", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetVideosByIdsHandler(db, w, r)
+	}).Methods("POST")
 }

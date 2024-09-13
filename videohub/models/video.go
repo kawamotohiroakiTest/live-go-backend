@@ -42,10 +42,20 @@ func GetAllVideos() ([]Video, error) {
 	return videos, nil
 }
 
+// 特定の動画IDで動画情報を取得する
 func GetVideoByID(videoID uint) (*Video, error) {
 	var video Video
 	if err := common.DB.Preload("Files").First(&video, videoID).Error; err != nil {
 		return nil, err
 	}
 	return &video, nil
+}
+
+// 複数の動画IDに基づいて動画情報を取得する関数を追加
+func GetVideosByIds(videoIds []uint) ([]Video, error) {
+	var videos []Video
+	if err := common.DB.Preload("Files").Where("id IN ?", videoIds).Find(&videos).Error; err != nil {
+		return nil, err
+	}
+	return videos, nil
 }
