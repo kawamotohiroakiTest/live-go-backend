@@ -106,10 +106,17 @@ func InitMinioService() (*StorageService, error) {
 	}, nil
 }
 
-func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader) (string, error) {
-	defer file.Close() // ファイルを閉じるためのdefer
+func (s *StorageService) UploadFile(file multipart.File, fileHeader *multipart.FileHeader, seederFlag bool) (string, error) {
+	defer file.Close()
 
-	objectName := "movies/" + common.GenerateUniqueFileName(fileHeader.Filename)
+	var objectName string
+
+	if seederFlag {
+		objectName = "movies/" + fileHeader.Filename
+	} else {
+		// seederFlagがfalseの場合、ユニークなファイル名を生成
+		objectName = "movies/" + common.GenerateUniqueFileName(fileHeader.Filename)
+	}
 
 	validExtensions := map[string]bool{
 		".mp4":  true,
@@ -266,7 +273,7 @@ func UploadVideoFile(userID uint, title, description string, genre string, file 
 	}
 
 	// 動画ファイルのアップロード
-	fileURL, err := storageService.UploadFile(file, fileHeader)
+	fileURL, err := storageService.UploadFile(file, fileHeader, false)
 	if err != nil {
 		tx.Rollback()
 		return "", err

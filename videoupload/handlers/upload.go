@@ -77,7 +77,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// 動画ファイルのアップロード
-	fileURL, err := storageService.UploadFile(file, fileHeader)
+	fileURL, err := storageService.UploadFile(file, fileHeader, false)
 	if err != nil {
 		common.LogVideoUploadError(err)
 		tx.Rollback()

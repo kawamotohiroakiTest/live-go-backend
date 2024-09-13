@@ -48,8 +48,9 @@ func main() {
 	common.LogTodo(common.INFO, "Running database migrations...")
 	db.RunMigration()
 
-	seeders.SeedAll(dbConn)
-	seeders.CreateCSV()
+	// seeders.SeedAll(dbConn)
+	// seeders.CreateCSV()
+	seeders.UploadAllMovies()
 
 	r := mux.NewRouter()
 
