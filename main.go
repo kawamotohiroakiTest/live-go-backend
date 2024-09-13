@@ -7,6 +7,7 @@ import (
 	"live/auth"
 	"live/common"
 	"live/db"
+	"live/db/seeders"
 	"live/videohub"
 	"live/videoupload"
 	"net/http"
@@ -47,9 +48,9 @@ func main() {
 	common.LogTodo(common.INFO, "Running database migrations...")
 	db.RunMigration()
 
-	// seeders.SeedAll(dbConn)
-	// seeders.CreateCSV()
-	// seeders.UploadAllMovies()
+	seeders.SeedAll(dbConn)
+	seeders.CreateCSV()
+	seeders.UploadAllMovies()
 
 	r := mux.NewRouter()
 

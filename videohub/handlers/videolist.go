@@ -10,6 +10,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/personalizeruntime"
+	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
 
@@ -132,6 +136,66 @@ func GetVideosByIdsHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(videos); err != nil {
 		common.LogVideoHubError(err)
 		http.Error(w, "動画のJSON変換に失敗しました", http.StatusInternalServerError)
+		return
+	}
+}
+
+func GetRecommendationsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetRecommendationsHandler")
+	// リクエストパラメータからuser_idを取得
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
+	fmt.Printf("Received user_id: %s\n", userID)
+
+	// 環境変数からAWSの設定を取得
+	region := os.Getenv("PY_AWS_REGION")
+	recommenderArn := os.Getenv("PY_RECOMMENDER_ARN")
+
+	if region == "" || recommenderArn == "" {
+		fmt.Println("AWSの設定が正しくありません")
+		http.Error(w, "AWSの設定が正しくありません", http.StatusInternalServerError)
+		return
+	}
+
+	// AWSセッションの作成
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	})
+	if err != nil {
+		fmt.Println("AWSセッションの初期化に失敗しました: %v", err)
+		common.LogVideoHubError(fmt.Errorf("AWSセッションの初期化に失敗しました: %v", err))
+		http.Error(w, "AWSセッションの初期化に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// Personalize Runtimeのクライアントを作成
+	personalizeRuntime := personalizeruntime.New(sess)
+
+	// GetRecommendations APIを呼び出してレコメンデーションを取得
+	input := &personalizeruntime.GetRecommendationsInput{
+		RecommenderArn: aws.String(recommenderArn),
+		UserId:         aws.String(userID),
+		NumResults:     aws.Int64(5), // 推奨結果を5件に制限
+	}
+
+	result, err := personalizeRuntime.GetRecommendations(input)
+	if err != nil {
+		fmt.Println("レコメンデーション取得に失敗しました: %v", err)
+		common.LogVideoHubError(fmt.Errorf("レコメンデーション取得に失敗しました: %v", err))
+		http.Error(w, "レコメンデーション取得に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// レコメンデーション結果をJSONで返す
+	recommendations := make([]map[string]string, len(result.ItemList))
+	for i, item := range result.ItemList {
+		recommendations[i] = map[string]string{"itemId": *item.ItemId}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(recommendations); err != nil {
+		common.LogVideoHubError(fmt.Errorf("レコメンデーションのJSONエンコードに失敗しました: %v", err))
+		http.Error(w, "レコメンデーションのJSONエンコードに失敗しました", http.StatusInternalServerError)
 		return
 	}
 }
