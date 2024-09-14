@@ -48,9 +48,13 @@ func main() {
 	common.LogTodo(common.INFO, "Running database migrations...")
 	db.RunMigration()
 
-	seeders.SeedAll(dbConn)
-	seeders.CreateCSV()
-	seeders.UploadAllMovies()
+	envMode := os.Getenv("ENV_MODE")
+
+	if envMode == "prod" {
+		seeders.SeedAll(dbConn)
+		seeders.CreateCSV()
+		seeders.UploadAllMovies()
+	}
 
 	r := mux.NewRouter()
 
