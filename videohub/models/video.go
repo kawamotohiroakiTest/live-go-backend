@@ -42,6 +42,14 @@ func GetAllVideos() ([]Video, error) {
 	return videos, nil
 }
 
+func GetLimitedVideos(limit int) ([]Video, error) {
+	var videos []Video
+	if err := common.DB.Preload("Files").Order("RAND()").Limit(limit).Find(&videos).Error; err != nil {
+		return nil, err
+	}
+	return videos, nil
+}
+
 // 特定の動画IDで動画情報を取得する
 func GetVideoByID(videoID uint) (*Video, error) {
 	var video Video

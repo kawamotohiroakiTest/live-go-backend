@@ -18,7 +18,6 @@ import (
 )
 
 func ListVideos(w http.ResponseWriter, r *http.Request) {
-	// ストレージサービスの初期化
 	var storageService *services.StorageService
 	var err error
 	envMode := os.Getenv("ENV_MODE")
@@ -34,7 +33,7 @@ func ListVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	videos, err := models.GetAllVideos()
+	videos, err := models.GetLimitedVideos(10)
 	if err != nil {
 		common.LogVideoHubError(err)
 		http.Error(w, "動画の取得に失敗しました", http.StatusInternalServerError)
@@ -44,10 +43,9 @@ func ListVideos(w http.ResponseWriter, r *http.Request) {
 	// サムネイルと動画の署名付きURLを生成
 	for _, video := range videos {
 		for i, file := range video.Files {
-			// 動画URLの生成
 			if file.FilePath != "" {
+				// 署名付きURLを生成し、それを返す
 				video.Files[i].FilePath, err = storageService.GetVideoPresignedURL(file.FilePath)
-
 				if err != nil {
 					common.LogVideoHubError(err)
 					http.Error(w, "動画URLの取得に失敗しました", http.StatusInternalServerError)
@@ -57,11 +55,11 @@ func ListVideos(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 動画データをJSONでフロントに返す
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(videos); err != nil {
 		common.LogVideoHubError(err)
-		http.Error(w, "動画のJSON変換に失敗しました", http.StatusInternalServerError)
-		return
+		http.Error(w, "動画データのエンコードに失敗しました", http.StatusInternalServerError)
 	}
 }
 
@@ -198,4 +196,36 @@ func GetRecommendationsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "レコメンデーションのJSONエンコードに失敗しました", http.StatusInternalServerError)
 		return
 	}
+}
+
+func StreamVideoHandler(w http.ResponseWriter, r *http.Request) {
+	// ストレージサービスの初期化
+	var storageService *services.StorageService
+	var err error
+	envMode := os.Getenv("ENV_MODE")
+	if envMode == "local" {
+		storageService, err = services.InitMinioService()
+	} else {
+		storageService, err = services.NewStorageService()
+	}
+
+	if err != nil {
+		common.LogVideoHubError(err)
+		http.Error(w, "ストレージサービスの初期化に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// フロントエンドから送信された動画ファイル名を取得
+	vars := mux.Vars(r)
+	filePath := vars["filename"]
+
+	// 動画ファイルの署名付きURLを取得
+	videoURL, err := storageService.GetVideoPresignedURL(filePath)
+	if err != nil {
+		http.Error(w, "署名付きURLの取得に失敗しました", http.StatusInternalServerError)
+		return
+	}
+
+	// 動画をクライアントにストリーミング送信
+	http.Redirect(w, r, videoURL, http.StatusTemporaryRedirect) // 署名付きURLを返してリダイレクト
 }
