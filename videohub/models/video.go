@@ -44,7 +44,7 @@ func GetAllVideos() ([]Video, error) {
 
 func GetLimitedVideos(limit int) ([]Video, error) {
 	var videos []Video
-	if err := common.DB.Preload("Files").Limit(limit).Find(&videos).Error; err != nil {
+	if err := common.DB.Preload("Files").Order("RAND()").Limit(limit).Find(&videos).Error; err != nil {
 		return nil, err
 	}
 	return videos, nil
