@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: back-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: back
+  template:
+    metadata:
+      labels:
+        app: back
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret  # ここにECR認証用のシークレットを指定
+      nodeSelector:
+        kubernetes.io/arch: amd64  # これによりx86_64のノードで動作
+      containers:
+      - name: back
+        image: 882981870627.dkr.ecr.ap-northeast-1.amazonaws.com/kubernetes_live-go-backend:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: TZ
+          value: "Asia/Tokyo"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front
+  template:
+    metadata:
+      labels:
+        app: front
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret  # ここにECR認証用のシークレットを指定
+      containers:
+      - name: front
+        image: 882981870627.dkr.ecr.ap-northeast-1.amazonaws.com/kubernetes_live-go-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: TZ
+          value: "Asia/Tokyo"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: front
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: back-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8081
+    targetPort: 8081
+  selector:
+    app: back
