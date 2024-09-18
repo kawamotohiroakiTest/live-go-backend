@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: back-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: back
+  template:
+    metadata:
+      labels:
+        app: back
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: back
+        image: 882981870627.dkr.ecr.ap-northeast-1.amazonaws.com/kubernetes_live-go-backend:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: TZ
+          value: "Asia/Tokyo"

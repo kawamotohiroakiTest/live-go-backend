@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: 882981870627.dkr.ecr.ap-northeast-1.amazonaws.com/kubernetes_live-go-frontend:latest
+        ports:
+        - containerPort: 80
+
+ 
