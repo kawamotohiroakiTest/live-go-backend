@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"live/ai"
 	"live/auth"
+	"live/comment"
 	"live/common"
 	"live/db"
 	"live/db/seeders"
@@ -59,6 +60,7 @@ func main() {
 	r := mux.NewRouter()
 
 	auth.RegisterRoutes(r)
+	comment.RegisterRoutes(r)
 	videoupload.RegisterRoutes(r)
 	videohub.RegisterRoutes(r, dbConn)
 	ai.RegisterRoutes(r)

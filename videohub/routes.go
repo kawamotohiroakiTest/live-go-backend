@@ -34,5 +34,10 @@ func RegisterRoutes(router *mux.Router, db *gorm.DB) {
 		handlers.GetRecommendationsHandler(w, r)
 	}).Methods("GET")
 
+	//詳細ページ
+	videohubRouter.HandleFunc("/{video_id}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetVideoByIDHandler(db, w, r)
+	}).Methods("GET")
+
 	fmt.Println("Registering videohub routes")
 }
