@@ -56,7 +56,9 @@ func AuthMiddleware(next http.Handler) http.Handler {
 func GetUserIDFromContext(ctx context.Context) (uint, error) {
 	// claims 変数の内容をログに出力
 	claims, ok := ctx.Value("claims").(*Claims)
-	// LogVideoUploadError(fmt.Errorf("claims: %v, ok: %v", claims, ok))
+
+	// Log the claims for debugging
+	fmt.Printf("Claims: %+v\n", claims)
 
 	if !ok || claims == nil {
 		err := fmt.Errorf("Failed to get claims from context")
@@ -65,7 +67,39 @@ func GetUserIDFromContext(ctx context.Context) (uint, error) {
 	}
 
 	// 最終的に返す UserID をログに出力
-	// LogVideoUploadError(fmt.Errorf("UserID: %d", claims.UserID))
+	fmt.Printf("UserID from claims: %d\n", claims.UserID)
 
 	return claims.UserID, nil
+}
+
+func JWTAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		// Extract the token from the "Bearer" part
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
+			return
+		}
+
+		// Parse the token
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return []byte("your_secret_key"), nil // Replace with your actual secret key
+		})
+
+		if err != nil || !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Set the claims into the request context
+		ctx := context.WithValue(r.Context(), "claims", claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
