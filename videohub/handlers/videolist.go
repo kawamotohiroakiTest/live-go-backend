@@ -100,6 +100,8 @@ func GetVideosByIdsHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request) 
 	var ids []uint
 	for _, videoId := range requestBody.VideoIds {
 		idStr := strings.TrimPrefix(videoId, "video_")
+		idStr = strings.TrimPrefix(idStr, "item_")
+
 		var id uint
 		fmt.Sscanf(idStr, "%d", &id) // 文字列を数値に変換
 		ids = append(ids, id)
