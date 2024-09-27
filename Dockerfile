@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine
+FROM golang:1.23-alpine
 
 # 必要なパッケージをインストール (ffmpegを含む)
 RUN apk add --no-cache git curl tzdata ffmpeg
