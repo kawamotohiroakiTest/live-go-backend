@@ -12,7 +12,7 @@ import (
 
 func RegisterRoutes(router *mux.Router, db *gorm.DB) {
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
-	videohubRouter := apiRouter.PathPrefix("/videos").Subrouter()
+	videohubRouter := apiRouter.PathPrefix("/videohub").Subrouter()
 
 	// 具体的なパス（search）を先に定義
 	videohubRouter.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
@@ -21,9 +21,9 @@ func RegisterRoutes(router *mux.Router, db *gorm.DB) {
 	}).Methods("GET")
 
 	// 動的パス（video_id）は後に定義
-	videohubRouter.HandleFunc("/{video_id}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetVideoByIDHandler(db, w, r)
-	}).Methods("GET")
+	// videohubRouter.HandleFunc("/{video_id}", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.GetVideoByIDHandler(db, w, r)
+	// }).Methods("GET")
 
 	// 他のハンドラも通常通り定義
 	videohubRouter.HandleFunc("/list", handlers.ListVideos).Methods("GET")
