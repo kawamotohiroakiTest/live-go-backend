@@ -14,6 +14,12 @@ func RegisterRoutes(router *mux.Router, db *gorm.DB) {
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
 	videohubRouter := apiRouter.PathPrefix("/videos").Subrouter()
 
+	// 動画検索
+	videohubRouter.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("search")
+		handlers.SearchVideosHandler(db, w, r)
+	}).Methods("GET")
+
 	videohubRouter.HandleFunc("/list", handlers.ListVideos).Methods("GET")
 	videohubRouter.HandleFunc("/create_user_video_interactions", func(w http.ResponseWriter, r *http.Request) {
 		handlers.SaveUserVideoInteractionHandler(db, w, r)

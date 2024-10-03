@@ -6,3 +6,4 @@ db/learningdata/*
 db/csv/*
 db/movies/*
 my-key.pem
+videohub/live
